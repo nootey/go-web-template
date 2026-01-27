@@ -1,0 +1,7 @@
+with-expecter: true
+dir: "mocks"
+outpkg: mocks
+packages:
+  go-web-template/internal/services:
+    interfaces:
+      UserServiceInterface:

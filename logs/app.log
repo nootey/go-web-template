@@ -1,0 +1,47 @@
+2026-01-27T14:02:13.717+0100	FATAL	seeder	seed/main.go:48	invalid seed type	{"type": "basic"}
+main.main
+	C:/Users/Bure/Desktop/Projects/go-web-template/cmd/seed/main.go:48
+runtime.main
+	C:/Users/Bure/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.4.windows-amd64/src/runtime/proc.go:285
+2026-01-27T14:02:33.732+0100	INFO	seeder	seed/main.go:65	starting database seeding	{"type": "core"}
+2026-01-27T14:02:33.733+0100	INFO	seeder	seeders/seeders.go:27	seeding core data
+2026-01-27T14:02:33.733+0100	INFO	seeder	seeders/role_seeder.go:63	seeding roles and permissions
+2026-01-27T14:02:33.748+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "system:superadmin"}
+2026-01-27T14:02:33.752+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:read"}
+2026-01-27T14:02:33.756+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:write"}
+2026-01-27T14:02:33.759+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:delete"}
+2026-01-27T14:02:33.763+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:read"}
+2026-01-27T14:02:33.766+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:write"}
+2026-01-27T14:02:33.770+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:delete"}
+2026-01-27T14:02:33.774+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "admin:access"}
+2026-01-27T14:02:33.777+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "super-admin"}
+2026-01-27T14:02:33.786+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "admin"}
+2026-01-27T14:02:33.806+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "user"}
+2026-01-27T14:02:33.810+0100	INFO	seeder	seeders/role_seeder.go:125	roles and permissions seeded successfully
+2026-01-27T14:02:33.811+0100	INFO	seeder	seeders/user_seeder.go:16	seeding root user
+2026-01-27T14:02:33.864+0100	INFO	seeder	seeders/user_seeder.go:51	root user created	{"email": "root@go.template", "id": 1, "role": "super-admin"}
+2026-01-27T14:02:33.864+0100	INFO	seeder	seed/main.go:71	seeding completed successfully
+2026-01-27T14:08:48.473+0100	INFO	seeder	seed/main.go:62	starting database seeding	{"type": "core"}
+2026-01-27T14:08:48.474+0100	INFO	seeder	seeders/seeders.go:27	seeding core data
+2026-01-27T14:08:48.474+0100	INFO	seeder	seeders/role_seeder.go:63	seeding roles and permissions
+2026-01-27T14:08:48.480+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "system:superadmin"}
+2026-01-27T14:08:48.483+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:read"}
+2026-01-27T14:08:48.487+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:write"}
+2026-01-27T14:08:48.489+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "users:delete"}
+2026-01-27T14:08:48.493+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:read"}
+2026-01-27T14:08:48.496+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:write"}
+2026-01-27T14:08:48.500+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "data:delete"}
+2026-01-27T14:08:48.503+0100	INFO	seeder	seeders/role_seeder.go:83	created permission	{"name": "admin:access"}
+2026-01-27T14:08:48.507+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "super-admin"}
+2026-01-27T14:08:48.514+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "admin"}
+2026-01-27T14:08:48.534+0100	INFO	seeder	seeders/role_seeder.go:107	created role	{"name": "user"}
+2026-01-27T14:08:48.539+0100	INFO	seeder	seeders/role_seeder.go:125	roles and permissions seeded successfully
+2026-01-27T14:08:48.539+0100	INFO	seeder	seeders/user_seeder.go:16	seeding root user
+2026-01-27T14:08:48.589+0100	INFO	seeder	seeders/user_seeder.go:51	root user created	{"email": "root@go.template", "id": 1, "role": "super-admin"}
+2026-01-27T14:08:48.589+0100	INFO	seeder	seed/main.go:68	seeding completed successfully
+2026-01-27T14:42:08.486+0100	INFO	api	api/main.go:40	starting application	{"environment": "local", "port": "8080"}
+2026-01-27T14:42:08.506+0100	INFO	api	api/main.go:51	database connected
+2026-01-27T14:42:08.506+0100	INFO	api	api/main.go:103	router configured
+2026-01-27T14:42:08.506+0100	INFO	api	api/main.go:117	server starting	{"address": "127.0.0.1:8080"}
+2026-01-27T15:00:09.472+0100	INFO	api	api/main.go:129	shutting down server...
+2026-01-27T15:00:09.472+0100	INFO	api	api/main.go:138	server stopped gracefully
