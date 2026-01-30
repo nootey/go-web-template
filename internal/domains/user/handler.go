@@ -1,21 +1,20 @@
-package handlers
+package user
 
 import (
+	"go-web-template/internal/utils"
 	"net/http"
 	"strconv"
-
-	"go-web-template/internal/services"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
 type UserHandler struct {
-	service services.UserServiceInterface
+	service UserServiceInterface
 	logger  *zap.Logger
 }
 
-func NewUserHandler(service services.UserServiceInterface, logger *zap.Logger) *UserHandler {
+func NewUserHandler(service UserServiceInterface, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
 		service: service,
 		logger:  logger.Named("user-handler"),
@@ -35,9 +34,9 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.ListUsers(r.Context(), page, pageSize)
 	if err != nil {
 		h.logger.Error("failed to list users", zap.Error(err))
-		RespondError(w, http.StatusInternalServerError, "failed to fetch users")
+		utils.RespondError(w, http.StatusInternalServerError, "failed to fetch users")
 		return
 	}
 
-	RespondJSON(w, http.StatusOK, result)
+	utils.RespondJSON(w, http.StatusOK, result)
 }

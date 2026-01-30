@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"go-web-template/internal/domains/user"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,20 +18,17 @@ import (
 
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
-	"go-web-template/internal/handlers"
-	"go-web-template/internal/services"
 	"go-web-template/internal/store"
 	"go-web-template/pkg/logging"
 )
 
 func main() {
-	// Load config
+
 	if err := config.Load(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}
 	cfg := config.Get()
 
-	// Initialize logger
 	logger := logging.InitLogger(cfg.App.Environment == "production", cfg.App.LogLevel)
 	defer func() {
 		_ = logger.Sync()
@@ -42,7 +40,6 @@ func main() {
 		zap.String("port", cfg.Server.Port),
 	)
 
-	// Initialize database
 	db, err := store.NewDB(cfg.Database)
 	if err != nil {
 		logger.Fatal("failed to connect to database", zap.Error(err))
@@ -52,23 +49,21 @@ func main() {
 
 	// Create SQLC queries instance
 	queries := database.New(db)
-	
+
 	// Initialize services
-	userService := services.NewUserService(queries, logger)
+	userService := user.NewUserService(queries, logger)
 	// Add more services as needed
 
 	// Initialize handlers
-	userHandler := handlers.NewUserHandler(userService, logger)
+	userHandler := user.NewUserHandler(userService, logger)
 	// Add more handlers as needed
 
-	// Setup router
 	r := setupRouter(cfg, userHandler, logger)
 
-	// Start server
 	startServer(cfg, r, logger)
 }
 
-func setupRouter(cfg *config.Config, userHandler *handlers.UserHandler, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, userHandler *user.UserHandler, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -88,10 +83,12 @@ func setupRouter(cfg *config.Config, userHandler *handlers.UserHandler, logger *
 		MaxAge:           300,
 	}))
 
-	// Health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			logger.Fatal("failed to write health response", zap.Error(err))
+		}
 	})
 
 	// API routes

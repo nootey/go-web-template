@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"go-web-template/internal/domains/user"
 	"path/filepath"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
-	"go-web-template/internal/services"
 	"go-web-template/internal/store/seeders"
 )
 
@@ -28,7 +28,7 @@ type TestContainer struct {
 }
 
 type Services struct {
-	UserService *services.UserService
+	UserService *user.UserService
 	// Add more services here
 }
 
@@ -66,7 +66,7 @@ func (s *ServiceIntegrationSuite) SetupSuite() {
 	err = goose.SetDialect("postgres")
 	s.Require().NoError(err, "failed to set goose dialect")
 
-	migrationsPath := filepath.Join("..", "..", "migrations")
+	migrationsPath := filepath.Join("..", "..", "..", "migrations")
 	err = goose.Up(db, migrationsPath)
 	s.Require().NoError(err, "migrations failed")
 
@@ -80,7 +80,7 @@ func (s *ServiceIntegrationSuite) SetupSuite() {
 	s.Require().NoError(err, "seeding failed")
 
 	// Initialize services
-	userService := services.NewUserService(queries, logger)
+	userService := user.NewUserService(queries, logger)
 
 	s.TC = &TestContainer{
 		Container: container,

@@ -1,16 +1,14 @@
-package services
+package user
 
 import (
 	"context"
-
 	"go-web-template/internal/database"
-	"go-web-template/internal/models"
 
 	"go.uber.org/zap"
 )
 
 type UserServiceInterface interface {
-	ListUsers(ctx context.Context, page, pageSize int) (*models.PaginatedUsers, error)
+	ListUsers(ctx context.Context, page, pageSize int) (*PaginatedUsers, error)
 }
 
 var _ UserServiceInterface = (*UserService)(nil)
@@ -27,8 +25,8 @@ func NewUserService(queries *database.Queries, logger *zap.Logger) *UserService 
 	}
 }
 
-func toUserModel(dbUser database.User) *models.User {
-	user := &models.User{
+func toUserModel(dbUser database.User) *User {
+	user := &User{
 		ID:          dbUser.ID,
 		Email:       dbUser.Email,
 		DisplayName: dbUser.DisplayName,
@@ -47,7 +45,7 @@ func toUserModel(dbUser database.User) *models.User {
 	return user
 }
 
-func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*models.PaginatedUsers, error) {
+func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*PaginatedUsers, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -73,14 +71,14 @@ func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*model
 	}
 
 	// Convert to domain models
-	users := make([]*models.User, len(dbUsers))
+	users := make([]*User, len(dbUsers))
 	for i, dbUser := range dbUsers {
 		users[i] = toUserModel(dbUser)
 	}
 
 	totalPages := (int(total) + pageSize - 1) / pageSize
 
-	return &models.PaginatedUsers{
+	return &PaginatedUsers{
 		Data:       users,
 		Page:       page,
 		PageSize:   pageSize,

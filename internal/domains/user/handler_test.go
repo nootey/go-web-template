@@ -1,7 +1,9 @@
-package handlers_test
+package user_test
 
 import (
 	"encoding/json"
+	"go-web-template/internal/domains/user"
+	"go-web-template/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -12,8 +14,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 
-	"go-web-template/internal/handlers"
-	"go-web-template/internal/models"
 	"go-web-template/mocks"
 )
 
@@ -21,12 +21,12 @@ type UserHandlerTestSuite struct {
 	suite.Suite
 	router      *chi.Mux
 	mockService *mocks.MockUserServiceInterface
-	handler     *handlers.UserHandler
+	handler     *user.UserHandler
 }
 
 func (suite *UserHandlerTestSuite) SetupTest() {
 	suite.mockService = mocks.NewMockUserServiceInterface(suite.T())
-	suite.handler = handlers.NewUserHandler(suite.mockService, zap.NewNop())
+	suite.handler = user.NewUserHandler(suite.mockService, zap.NewNop())
 
 	// Setup router
 	suite.router = chi.NewRouter()
@@ -43,8 +43,8 @@ func TestUserHandlerTestSuite(t *testing.T) {
 
 // Test successful user listing
 func (suite *UserHandlerTestSuite) TestListUsers_Success() {
-	mockUsers := &models.PaginatedUsers{
-		Data: []*models.User{
+	mockUsers := &user.PaginatedUsers{
+		Data: []*user.User{
 			{
 				ID:          1,
 				Email:       "test1@example.com",
@@ -74,7 +74,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_Success() {
 
 	suite.Equal(http.StatusOK, w.Code)
 
-	var response models.PaginatedUsers
+	var response user.PaginatedUsers
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
 	suite.Len(response.Data, 2)
@@ -83,8 +83,8 @@ func (suite *UserHandlerTestSuite) TestListUsers_Success() {
 
 // Test with pagination parameters
 func (suite *UserHandlerTestSuite) TestListUsers_WithPagination() {
-	mockUsers := &models.PaginatedUsers{
-		Data:       []*models.User{},
+	mockUsers := &user.PaginatedUsers{
+		Data:       []*user.User{},
 		Page:       2,
 		PageSize:   5,
 		Total:      10,
@@ -103,7 +103,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_WithPagination() {
 
 	suite.Equal(http.StatusOK, w.Code)
 
-	var response models.PaginatedUsers
+	var response user.PaginatedUsers
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
 	suite.Equal(2, response.Page)
@@ -124,7 +124,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 
 	suite.Equal(http.StatusInternalServerError, w.Code)
 
-	var response handlers.ErrorResponse
+	var response utils.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
 	suite.Equal("failed to fetch users", response.Error)
@@ -135,8 +135,8 @@ func (suite *UserHandlerTestSuite) TestListUsers_DefaultPagination() {
 	// When page/page_size not provided, service should receive defaults
 	suite.mockService.EXPECT().
 		ListUsers(mock.Anything, 0, 0).
-		Return(&models.PaginatedUsers{
-			Data:       []*models.User{},
+		Return(&user.PaginatedUsers{
+			Data:       []*user.User{},
 			Page:       1,
 			PageSize:   20,
 			Total:      0,
