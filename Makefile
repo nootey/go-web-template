@@ -38,9 +38,13 @@ sqlc-generate:
 test:
 	go test -v ./...
 
-test-cover:
-	go test -cover ./...
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 
 # Lint
 lint:
 	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix
