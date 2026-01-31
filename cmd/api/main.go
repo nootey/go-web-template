@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"go-web-template/internal/domains/user"
 	"net/http"
@@ -44,7 +45,12 @@ func main() {
 	if err != nil {
 		logger.Fatal("failed to connect to database", zap.Error(err))
 	}
-	defer db.Close()
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			logger.Fatal("failed to close database connection", zap.Error(err))
+		}
+	}(db)
 	logger.Info("database connected")
 
 	// Create SQLC queries instance
