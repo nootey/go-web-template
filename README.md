@@ -51,26 +51,6 @@ Visit: `http://127.0.0.1:8080/health`
 
 ## Architecture
 
-### Layers
-
-1. **Handlers** (`internal/handlers/`)
-    - HTTP request/response handling
-    - Input validation
-    - Calls services
-
-2. **Services** (`internal/services/`)
-    - Business logic
-    - Calls SQLC-generated queries directly
-    - Converts database models to domain models
-
-3. **Database** (`internal/database/`)
-    - SQLC-generated code (auto-generated)
-    - Type-safe database queries
-
-4. **Models** (`internal/models/`)
-    - Domain models (what your API returns)
-    - Separate from database models
-
 ### Adding a New Resource
 
 1. **Create migration:**
@@ -94,7 +74,7 @@ Visit: `http://127.0.0.1:8080/health`
    make sqlc-generate
 ```
 
-4. **Create service** (`internal/services/post_service.go`):
+4. **Create service**:
 ```go
    type PostService struct {
        queries *database.Queries
@@ -102,7 +82,7 @@ Visit: `http://127.0.0.1:8080/health`
    }
 ```
 
-5. **Create handler** (`internal/handlers/post_handler.go`):
+5. **Create handler**:
 ```go
    func (h *PostHandler) Routes() chi.Router {
        r := chi.NewRouter()
@@ -145,17 +125,18 @@ Uses generated mocks to test handlers in isolation.
 
 The template includes workflows:
 
-- **Lint** (`.github/workflows/lint.yml`)
-    - Runs `golangci-lint` on every push/PR
-    - Enforces code quality
+- **Lint**:
+    - Client and server
 
-- **Tests** (`.github/workflows/test.yml`)
+- **Tests**:
     - Runs all tests with coverage
-    - Uses Testcontainers
 
-**Release** (`.github/workflows/release.yml`)
+**Release**:
     - Auto-creates Git tags and GitHub releases
-    - Triggered by merging PRs with labels
+
+### Dependabot
+
+- Dependabot is included, for dependency updates.
 
 ### Setup Release Automation
 
