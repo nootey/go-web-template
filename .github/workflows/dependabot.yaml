@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "docker"
+    directory: "/build/"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "docker-compose"
+    directory: "/deployments/docker/"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directory: "./client"
+    schedule:
+      interval: "weekly"
