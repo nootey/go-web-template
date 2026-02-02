@@ -7,7 +7,6 @@ import (
 	"go-web-template/internal/database"
 	"go-web-template/internal/domains/user"
 
-	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,13 +20,11 @@ var _ AuthServiceInterface = (*AuthService)(nil)
 
 type AuthService struct {
 	queries *database.Queries
-	logger  *zap.Logger
 }
 
-func NewAuthService(queries *database.Queries, logger *zap.Logger) *AuthService {
+func NewAuthService(queries *database.Queries) *AuthService {
 	return &AuthService{
 		queries: queries,
-		logger:  logger.Named("auth-service"),
 	}
 }
 
@@ -62,7 +59,6 @@ func (s *AuthService) CreateUser(ctx context.Context, displayName, email, passwo
 
 	defaultRole, err := s.queries.GetDefaultRole(ctx)
 	if err != nil {
-		s.logger.Error("failed to get default role", zap.Error(err))
 		return nil, errors.New("failed to create user")
 	}
 

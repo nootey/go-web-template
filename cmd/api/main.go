@@ -68,13 +68,13 @@ func main() {
 	authMiddleware := mWare.NewAuthMiddleware(cfg, logger)
 
 	// Initialize services
-	userService := user.NewUserService(queries, logger)
-	authService := auth.NewAuthService(queries, logger)
+	userService := user.NewUserService(queries)
+	authService := auth.NewAuthService(queries)
 	// Add more services as needed
 
 	// Initialize handlers
-	userHandler := user.NewUserHandler(userService, logger)
-	authHandler := auth.NewAuthHandler(authService, logger, authMiddleware)
+	userHandler := user.NewUserHandler(userService)
+	authHandler := auth.NewAuthHandler(authService, authMiddleware)
 	// Add more handlers as needed
 
 	h := Handlers{

@@ -7,23 +7,19 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 type AuthHandler struct {
 	service        AuthServiceInterface
-	logger         *zap.Logger
 	authMiddleware middleware.AuthMiddlewareInterface
 }
 
 func NewAuthHandler(
 	srv AuthServiceInterface,
-	logger *zap.Logger,
 	authMiddleware middleware.AuthMiddlewareInterface,
 ) *AuthHandler {
 	return &AuthHandler{
 		service:        srv,
-		logger:         logger.Named("auth-handler"),
 		authMiddleware: authMiddleware,
 	}
 }
