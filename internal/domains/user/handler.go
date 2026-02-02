@@ -14,9 +14,9 @@ type UserHandler struct {
 	logger  *zap.Logger
 }
 
-func NewUserHandler(service UserServiceInterface, logger *zap.Logger) *UserHandler {
+func NewUserHandler(srv UserServiceInterface, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
-		service: service,
+		service: srv,
 		logger:  logger.Named("user-handler"),
 	}
 }

@@ -56,6 +56,26 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const getDefaultRole = `-- name: GetDefaultRole :one
+SELECT id, name, is_default, description, created_at, updated_at FROM roles
+WHERE is_default = true
+    LIMIT 1
+`
+
+func (q *Queries) GetDefaultRole(ctx context.Context) (Role, error) {
+	row := q.db.QueryRowContext(ctx, getDefaultRole)
+	var i Role
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsDefault,
+		&i.Description,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, password, display_name, email_confirmed, role_id, created_at, updated_at, deleted_at FROM users
 WHERE email = $1 AND deleted_at IS NULL
@@ -63,6 +83,28 @@ WHERE email = $1 AND deleted_at IS NULL
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Password,
+		&i.DisplayName,
+		&i.EmailConfirmed,
+		&i.RoleID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, password, display_name, email_confirmed, role_id, created_at, updated_at, deleted_at FROM users
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

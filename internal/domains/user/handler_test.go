@@ -127,7 +127,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 	var response utils.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
-	suite.Equal("failed to fetch users", response.Error)
+	suite.Equal("failed to fetch users", response.Message)
 }
 
 // Test default pagination values
