@@ -65,7 +65,13 @@ func main() {
 	queries := database.New(db)
 
 	// Initialize auth middleware
-	authMiddleware := mWare.NewAuthMiddleware(cfg, logger)
+	authMiddleware := mWare.NewAuthMiddleware(
+		cfg,
+		logger,
+		cfg.Auth.AccessTTL,
+		cfg.Auth.RefreshTTLShort,
+		cfg.Auth.RefreshTTLLong,
+	)
 
 	// Initialize services
 	userService := user.NewUserService(queries)

@@ -41,14 +41,26 @@ type AuthMiddlewareInterface interface {
 }
 
 type AuthMiddleware struct {
-	cfg    *config.Config
-	logger *zap.Logger
+	cfg             *config.Config
+	logger          *zap.Logger
+	accessTTL       time.Duration
+	refreshTTLShort time.Duration
+	refreshTTLLong  time.Duration
 }
 
-func NewAuthMiddleware(cfg *config.Config, logger *zap.Logger) *AuthMiddleware {
+func NewAuthMiddleware(
+	cfg *config.Config,
+	logger *zap.Logger,
+	accessTTL time.Duration,
+	refreshTTLShort time.Duration,
+	refreshTTLLong time.Duration,
+) *AuthMiddleware {
 	return &AuthMiddleware{
-		cfg:    cfg,
-		logger: logger,
+		cfg:             cfg,
+		logger:          logger,
+		accessTTL:       accessTTL,
+		refreshTTLShort: refreshTTLShort,
+		refreshTTLLong:  refreshTTLLong,
 	}
 }
 
@@ -104,12 +116,12 @@ func (m *AuthMiddleware) WebClientAuthentication(next http.Handler) http.Handler
 func (m *AuthMiddleware) GenerateLoginTokens(userID int64, rememberMe bool) (string, string, error) {
 	var expiresAt time.Time
 	if rememberMe {
-		expiresAt = time.Now().Add(m.cfg.Auth.RefreshTTLLong)
+		expiresAt = time.Now().Add(m.refreshTTLLong)
 	} else {
-		expiresAt = time.Now().Add(m.cfg.Auth.RefreshTTLShort)
+		expiresAt = time.Now().Add(m.refreshTTLShort)
 	}
 
-	accessToken, err := m.generateToken("access", time.Now().Add(m.cfg.Auth.AccessTTL), userID)
+	accessToken, err := m.generateToken("access", time.Now().Add(m.accessTTL), userID)
 	if err != nil {
 		return "", "", err
 	}
@@ -125,9 +137,9 @@ func (m *AuthMiddleware) GenerateLoginTokens(userID int64, rememberMe bool) (str
 func (m *AuthMiddleware) SetLoginCookies(w http.ResponseWriter, accessToken, refreshToken string, rememberMe bool) {
 	var refreshMaxAge int
 	if rememberMe {
-		refreshMaxAge = int(m.cfg.Auth.RefreshTTLLong.Seconds())
+		refreshMaxAge = int(m.refreshTTLLong.Seconds())
 	} else {
-		refreshMaxAge = int(m.cfg.Auth.RefreshTTLShort.Seconds())
+		refreshMaxAge = int(m.refreshTTLShort.Seconds())
 	}
 
 	http.SetCookie(w, &http.Cookie{
@@ -135,7 +147,7 @@ func (m *AuthMiddleware) SetLoginCookies(w http.ResponseWriter, accessToken, ref
 		Value:    accessToken,
 		Path:     "/",
 		Domain:   m.cfg.App.CookieDomain,
-		MaxAge:   int(m.cfg.Auth.AccessTTL.Seconds()),
+		MaxAge:   int(m.accessTTL.Seconds()),
 		Secure:   m.cfg.App.Environment == "production",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
@@ -178,7 +190,7 @@ func (m *AuthMiddleware) ClearLoginCookies(w http.ResponseWriter) {
 }
 
 func (m *AuthMiddleware) issueAccessCookie(w http.ResponseWriter, userID int64) error {
-	accessExp := time.Now().Add(m.cfg.Auth.AccessTTL)
+	accessExp := time.Now().Add(m.accessTTL)
 	token, err := m.generateToken("access", accessExp, userID)
 	if err != nil {
 		return err
