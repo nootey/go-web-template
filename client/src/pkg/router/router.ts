@@ -14,7 +14,7 @@ router.beforeEach(async (to) => {
 
     const requiresAuth = to.matched.some((r) => r.meta.requiresAuth);
     const guestOnly = to.matched.some((r) => r.meta.guestOnly);
-    const emailValidated = to.matched.some((r) => r.meta.emailValidated);
+    // const emailValidated = to.matched.some((r) => r.meta.emailValidated);
     const permsAny = to.matched.flatMap((r) => r.meta.permsAny ?? []);
     const permsAll = to.matched.flatMap((r) => r.meta.permsAll ?? []);
 
@@ -26,12 +26,12 @@ router.beforeEach(async (to) => {
         return { name: "login", query: { redirect: to.fullPath } };
     }
 
-    // Logged in but NOT verified
-    if (requiresAuth && auth.isAuthenticated && !auth.isValidated && !emailValidated) {
-        if (to.name !== "confirm.email") {
-            return { name: "confirm.email", query: { redirect: to.fullPath } };
-        }
-    }
+    // // Logged in but NOT verified
+    // if (requiresAuth && auth.isAuthenticated && !auth.isValidated && !emailValidated) {
+    //     if (to.name !== "confirm.email") {
+    //         return { name: "confirm.email", query: { redirect: to.fullPath } };
+    //     }
+    // }
 
     // Guest-only pages
     if (guestOnly && auth.isAuthenticated) {

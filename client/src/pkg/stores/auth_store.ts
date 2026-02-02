@@ -48,7 +48,7 @@ export const useAuthStore = defineStore("auth", {
         },
 
         async getAuthUser(set = true) {
-            const response = await apiClient.get(`${this.apiPrefix}/current`, {
+            const response = await apiClient.get(`${this.apiPrefix}/me`, {
                 params: { withSecrets: true },
             });
 

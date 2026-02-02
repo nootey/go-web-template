@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	mWare "go-web-template/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -22,6 +25,11 @@ import (
 	"go-web-template/internal/store"
 	"go-web-template/pkg/logging"
 )
+
+type Handlers struct {
+	Auth *auth.AuthHandler
+	User *user.UserHandler
+}
 
 func main() {
 
@@ -56,20 +64,36 @@ func main() {
 	// Create SQLC queries instance
 	queries := database.New(db)
 
+	// Initialize auth middleware
+	authMiddleware := mWare.NewAuthMiddleware(
+		cfg,
+		logger,
+		cfg.Auth.AccessTTL,
+		cfg.Auth.RefreshTTLShort,
+		cfg.Auth.RefreshTTLLong,
+	)
+
 	// Initialize services
-	userService := user.NewUserService(queries, logger)
+	userService := user.NewUserService(queries)
+	authService := auth.NewAuthService(queries)
 	// Add more services as needed
 
 	// Initialize handlers
-	userHandler := user.NewUserHandler(userService, logger)
+	userHandler := user.NewUserHandler(userService)
+	authHandler := auth.NewAuthHandler(authService, authMiddleware)
 	// Add more handlers as needed
 
-	r := setupRouter(cfg, userHandler, logger)
+	h := Handlers{
+		Auth: authHandler,
+		User: userHandler,
+	}
+
+	r := setupRouter(cfg, &h, authMiddleware, logger)
 
 	startServer(cfg, r, logger)
 }
 
-func setupRouter(cfg *config.Config, userHandler *user.UserHandler, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -99,8 +123,16 @@ func setupRouter(cfg *config.Config, userHandler *user.UserHandler, logger *zap.
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {
-		r.Mount("/users", userHandler.Routes())
-		// Mount more handlers as needed
+		// Public routes
+		r.Mount("/auth", h.Auth.Routes())
+
+		// Protected routes
+		r.Group(func(r chi.Router) {
+			r.Use(authMiddleware.WebClientAuthentication)
+
+			r.Mount("/users", h.User.Routes())
+			// Mount more protected handlers as needed
+		})
 	})
 
 	logger.Info("router configured")

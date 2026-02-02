@@ -6,18 +6,15 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 type UserHandler struct {
 	service UserServiceInterface
-	logger  *zap.Logger
 }
 
-func NewUserHandler(service UserServiceInterface, logger *zap.Logger) *UserHandler {
+func NewUserHandler(srv UserServiceInterface) *UserHandler {
 	return &UserHandler{
-		service: service,
-		logger:  logger.Named("user-handler"),
+		service: srv,
 	}
 }
 
@@ -33,7 +30,6 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.ListUsers(r.Context(), page, pageSize)
 	if err != nil {
-		h.logger.Error("failed to list users", zap.Error(err))
 		utils.RespondError(w, http.StatusInternalServerError, "failed to fetch users")
 		return
 	}

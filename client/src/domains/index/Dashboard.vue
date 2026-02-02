@@ -1,5 +1,12 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useAuthStore } from "../../pkg/stores/auth_store.ts";
 
-<template>Hello there</template>
+const authStore = useAuthStore();
+</script>
+
+<template>
+    <span>Hello there ...</span>
+    <i @click="authStore.logoutUser()">Log out</i>
+</template>
 
 <style scoped></style>

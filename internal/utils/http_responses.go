@@ -6,7 +6,13 @@ import (
 )
 
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Title   string `json:"title"`
+	Message string `json:"message"`
+}
+
+type SuccessResponse struct {
+	Title   string `json:"title,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 func RespondJSON(w http.ResponseWriter, status int, data interface{}) {
@@ -18,5 +24,15 @@ func RespondJSON(w http.ResponseWriter, status int, data interface{}) {
 }
 
 func RespondError(w http.ResponseWriter, status int, message string) {
-	RespondJSON(w, status, ErrorResponse{Error: message})
+	RespondJSON(w, status, ErrorResponse{
+		Title:   "Error",
+		Message: message,
+	})
+}
+
+func RespondSuccess(w http.ResponseWriter, status int, message string) {
+	RespondJSON(w, status, SuccessResponse{
+		Title:   "Success",
+		Message: message,
+	})
 }

@@ -80,7 +80,7 @@ func (s *ServiceIntegrationSuite) SetupSuite() {
 	s.Require().NoError(err, "seeding failed")
 
 	// Initialize services
-	userService := user.NewUserService(queries, logger)
+	userService := user.NewUserService(queries)
 
 	s.TC = &TestContainer{
 		Container: container,

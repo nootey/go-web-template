@@ -31,7 +31,7 @@ seed-full:
 	go run cmd/seed/main.go full
 
 # SQLC
-sqlc-generate:
+sqlc:
 	sqlc generate
 
 # Tests

@@ -3,8 +3,6 @@ package user
 import (
 	"context"
 	"go-web-template/internal/database"
-
-	"go.uber.org/zap"
 )
 
 type UserServiceInterface interface {
@@ -15,13 +13,11 @@ var _ UserServiceInterface = (*UserService)(nil)
 
 type UserService struct {
 	queries *database.Queries
-	logger  *zap.Logger
 }
 
-func NewUserService(queries *database.Queries, logger *zap.Logger) *UserService {
+func NewUserService(queries *database.Queries) *UserService {
 	return &UserService{
 		queries: queries,
-		logger:  logger.Named("user-service"),
 	}
 }
 
@@ -60,13 +56,11 @@ func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*Pagin
 		Offset: int32(offset),
 	})
 	if err != nil {
-		s.logger.Error("failed to list users", zap.Error(err))
 		return nil, err
 	}
 
 	total, err := s.queries.CountUsers(ctx)
 	if err != nil {
-		s.logger.Error("failed to count users", zap.Error(err))
 		return nil, err
 	}
 

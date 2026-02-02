@@ -8,13 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-web-template/mocks"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
-
-	"go-web-template/mocks"
 )
 
 type UserHandlerTestSuite struct {
@@ -26,7 +25,7 @@ type UserHandlerTestSuite struct {
 
 func (suite *UserHandlerTestSuite) SetupTest() {
 	suite.mockService = mocks.NewMockUserServiceInterface(suite.T())
-	suite.handler = user.NewUserHandler(suite.mockService, zap.NewNop())
+	suite.handler = user.NewUserHandler(suite.mockService)
 
 	// Setup router
 	suite.router = chi.NewRouter()
@@ -127,7 +126,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 	var response utils.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
-	suite.Equal("failed to fetch users", response.Error)
+	suite.Equal("failed to fetch users", response.Message)
 }
 
 // Test default pagination values

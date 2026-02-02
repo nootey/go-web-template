@@ -14,9 +14,11 @@ type Querier interface {
 	CreatePermission(ctx context.Context, arg CreatePermissionParams) (Permission, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	GetDefaultRole(ctx context.Context) (Role, error)
 	GetPermissionByName(ctx context.Context, name string) (Permission, error)
 	GetRoleByName(ctx context.Context, name string) (Role, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id int64) (User, error)
 	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]User, error)
 }
 
