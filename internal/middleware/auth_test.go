@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 )
@@ -24,11 +23,16 @@ type AuthMiddlewareTestSuite struct {
 }
 
 func (suite *AuthMiddlewareTestSuite) SetupTest() {
-	_ = godotenv.Load("../../.env")
+
 	if err := config.Load(); err != nil {
 		panic(err)
 	}
 	suite.cfg = config.Get()
+
+	// Override with test-safe values
+	suite.cfg.Auth.AccessSecret = "test-access-secret-key-for-testing"
+	suite.cfg.Auth.RefreshSecret = "test-refresh-secret-key-for-testing"
+	suite.cfg.Auth.EncodeIDSecret = "12345678901234567890123456789012" // Exactly 32 bytes
 
 	// Create middleware with short TTLs for testing
 	logger, _ := zap.NewDevelopment()
