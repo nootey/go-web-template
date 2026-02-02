@@ -112,7 +112,10 @@ func (suite *AuthMiddlewareTestSuite) TestWebClientAuthentication_ValidAccessTok
 		suite.True(ok)
 		suite.Equal(userID, extractedUserID)
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]int64{"user_id": extractedUserID})
+		err := json.NewEncoder(w).Encode(map[string]int64{"user_id": extractedUserID})
+		if err != nil {
+			fmt.Println("encode error", err.Error())
+		}
 	}))
 
 	// Make request with valid access token
