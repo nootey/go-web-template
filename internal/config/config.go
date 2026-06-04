@@ -75,8 +75,8 @@ func Load() error {
 			CookieDomain: getEnv("COOKIE_DOMAIN", ""),
 		},
 		Seed: SeedConfig{
-			RootUser:     getEnv("ROOT_USER", ""),
-			RootPassword: getEnv("ROOT_PASSWORD", ""),
+			RootUser:     getEnv("ROOT_USER", "root@local.host"),
+			RootPassword: getEnv("ROOT_PASSWORD", "password"),
 		},
 		Auth: AuthConfig{
 			AccessSecret:    getEnv("JWT_ACCESS_SECRET", ""),

@@ -134,10 +134,6 @@ The template includes workflows:
 **Release**:
     - Auto-creates Git tags and GitHub releases
 
-### Dependabot
-
-- Dependabot is included, for dependency updates.
-
 ### Setup Release Automation
 
 -  **Create labels** in GitHub (Settings → Labels):
