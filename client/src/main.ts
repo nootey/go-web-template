@@ -7,7 +7,7 @@ import { createPinia } from "pinia";
 
 // PrimeVue core + theme
 import PrimeVue from "primevue/config";
-import Material from "@primevue/themes/material";
+import Material from "@primeuix/themes/material";
 
 // PrimeVue services & directives
 import ConfirmationService from "primevue/confirmationservice";
