@@ -33,3 +33,10 @@ go.work.sum
 
 storage
 logs
+
+/client/node_modules
+/client/dist
+/client/.env
+
+coverage.html
+coverage.out
