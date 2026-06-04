@@ -2,6 +2,7 @@
 
 ## Project context
 
+- Includes web based client (separate CLAUDE.md file in /client).
 - Currently a template
 
 ## Workflow
