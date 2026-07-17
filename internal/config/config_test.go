@@ -12,6 +12,7 @@ func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("SEED_ROOT_USER", "seeded@example.com")
 	t.Setenv("REDIS_HOST", "redis")
 	t.Setenv("REDIS_PORT", "6380")
+	t.Setenv("REDIS_PASSWORD", "redis-secret")
 	t.Setenv("SESSION_TTL_HOURS", "48")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://a.example,https://b.example")
 
@@ -66,5 +67,24 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if c.Session.RememberMeTTLHours != 720 {
 		t.Errorf("Session.RememberMeTTLHours = %d, want 720", c.Session.RememberMeTTLHours)
+	}
+}
+
+func TestLoadProductionRejectsEmptyRedisPassword(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "production")
+
+	err := Load()
+
+	if err == nil {
+		t.Fatal("Load() error = nil, want error for empty redis password in production")
+	}
+}
+
+func TestLoadProductionAcceptsRedisPassword(t *testing.T) {
+	t.Setenv("APP_ENVIRONMENT", "production")
+	t.Setenv("REDIS_PASSWORD", "redis-secret")
+
+	if err := Load(); err != nil {
+		t.Fatalf("Load() error = %v", err)
 	}
 }

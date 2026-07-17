@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -106,7 +107,19 @@ func Load() error {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	if err := c.validate(); err != nil {
+		return err
+	}
+
 	cfg = c
+	return nil
+}
+
+// validate rejects config combinations that unmarshal fine but are unsafe to run with.
+func (c *Config) validate() error {
+	if c.App.Environment == "production" && c.Redis.Password == "" {
+		return errors.New("redis password is required when app.environment is production")
+	}
 	return nil
 }
 
