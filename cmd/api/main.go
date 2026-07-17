@@ -18,10 +18,12 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
+	"go-web-template/internal/sessions"
 	"go-web-template/internal/store"
 	"go-web-template/pkg/logging"
 )
@@ -61,17 +63,24 @@ func main() {
 	}(db)
 	logger.Info("database connected")
 
+	rdb, err := store.NewRedis(cfg.Redis)
+	if err != nil {
+		logger.Fatal("failed to connect to redis", zap.Error(err))
+	}
+	defer func(rdb *redis.Client) {
+		err := rdb.Close()
+		if err != nil {
+			logger.Error("failed to close redis connection", zap.Error(err))
+		}
+	}(rdb)
+	logger.Info("redis connected")
+
 	// Create SQLC queries instance
 	queries := database.New(db)
 
 	// Initialize auth middleware
-	authMiddleware := mWare.NewAuthMiddleware(
-		cfg,
-		logger,
-		cfg.Auth.AccessTTL,
-		cfg.Auth.RefreshTTLShort,
-		cfg.Auth.RefreshTTLLong,
-	)
+	sessionStore := sessions.NewStore(rdb, cfg.Session)
+	authMiddleware := mWare.NewAuthMiddleware(sessionStore, cfg, logger)
 
 	// Initialize services
 	userService := user.NewUserService(queries)
@@ -80,7 +89,7 @@ func main() {
 
 	// Initialize handlers
 	userHandler := user.NewUserHandler(userService)
-	authHandler := auth.NewAuthHandler(authService, authMiddleware)
+	authHandler := auth.NewAuthHandler(authService, authMiddleware, logger)
 	// Add more handlers as needed
 
 	h := Handlers{
@@ -105,7 +114,7 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.Server.AllowedOrigins,
+		AllowedOrigins:   cfg.Cors.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"Link"},
