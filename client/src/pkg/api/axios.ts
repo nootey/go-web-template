@@ -1,67 +1,24 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/auth_store.ts";
+import type { AxiosError, AxiosResponse } from "axios";
 
 const apiClient = axios.create({
     baseURL: "/api",
     withCredentials: true,
 });
 
-let isRefreshing = false;
-let failedQueue: Array<{
-    resolve: (value?: unknown) => void;
-    reject: (reason?: unknown) => void;
-}> = [];
-
-const processQueue = (error: unknown) => {
-    failedQueue.forEach((prom) => {
-        if (error) {
-            prom.reject(error);
-        } else {
-            prom.resolve();
-        }
-    });
-    failedQueue = [];
-};
+// A 401 from these is an expected outcome the caller handles itself (bad
+// credentials, an already-dead session), not a signal to tear down auth state.
+const authEndpointPattern = /\/auth\/(login|register|logout|me)/;
 
 apiClient.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const { config, response } = error;
-        const url: string = error?.config?.url ?? "";
+    (response: AxiosResponse): AxiosResponse => response,
+    async (error: AxiosError): Promise<never> => {
+        const url: string = error.config?.url ?? "";
 
-        if (!response) return Promise.reject(error);
-
-        if (response.status === 401 && !config._retry) {
-            if (isRefreshing) {
-                // Queue this request
-                return new Promise((resolve, reject) => {
-                    failedQueue.push({ resolve, reject });
-                })
-                    .then(() => apiClient(config))
-                    .catch((err) => Promise.reject(err));
-            }
-
-            config._retry = true;
-            isRefreshing = true;
-
-            try {
-                // First request triggers refresh, others wait
-                await apiClient(config);
-                processQueue(null);
-                isRefreshing = false;
-                return await apiClient(config);
-            } catch (retryError) {
-                processQueue(retryError);
-                isRefreshing = false;
-                throw retryError;
-            }
-        }
-
-        if (response.status === 401) {
+        if (error.response?.status === 401 && !authEndpointPattern.test(url)) {
             const auth = useAuthStore();
-            const isAuthEndpoint = /\/auth\/(current|logout|login)/.test(url);
-
-            if (!isAuthEndpoint && auth.isAuthenticated) {
+            if (auth.isAuthenticated) {
                 await auth.logoutUser();
             }
         }

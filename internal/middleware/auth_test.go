@@ -2,262 +2,187 @@ package middleware_test
 
 import (
 	"encoding/json"
-	"fmt"
-	"go-web-template/internal/config"
-	"go-web-template/internal/middleware"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"go-web-template/internal/config"
+	"go-web-template/internal/middleware"
+	"go-web-template/internal/sessions"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
 )
 
 type AuthMiddlewareTestSuite struct {
 	suite.Suite
+	mr         *miniredis.Miniredis
+	store      *sessions.Store
 	middleware *middleware.AuthMiddleware
-	cfg        *config.Config
-}
-
-func (suite *AuthMiddlewareTestSuite) SetupTest() {
-
-	if err := config.Load(); err != nil {
-		panic(err)
-	}
-	suite.cfg = config.Get()
-
-	// Override with test-safe values
-	suite.cfg.Auth.AccessSecret = "test-access-secret-key-for-testing"
-	suite.cfg.Auth.RefreshSecret = "test-refresh-secret-key-for-testing"
-	suite.cfg.Auth.EncodeIDSecret = "12345678901234567890123456789012" // Exactly 32 bytes
-
-	// Create middleware with short TTLs for testing
-	logger, _ := zap.NewDevelopment()
-	suite.middleware = middleware.NewAuthMiddleware(
-		suite.cfg,
-		logger,
-		2*time.Second,
-		5*time.Second,
-		1*time.Minute,
-	)
 }
 
 func TestAuthMiddlewareTestSuite(t *testing.T) {
 	suite.Run(t, new(AuthMiddlewareTestSuite))
 }
 
-func (suite *AuthMiddlewareTestSuite) decodeToken(token, tokenType string) (*middleware.WebClientUserClaim, error) {
-	var secret string
-	switch tokenType {
-	case "access":
-		secret = suite.cfg.Auth.AccessSecret
-	case "refresh":
-		secret = suite.cfg.Auth.RefreshSecret
-	default:
-		return nil, fmt.Errorf("unknown token type")
+func (suite *AuthMiddlewareTestSuite) SetupTest() {
+	if err := config.Load(); err != nil {
+		panic(err)
 	}
+	cfg := config.Get()
 
-	claims := &middleware.WebClientUserClaim{}
-	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(secret), nil
-	})
+	suite.mr = miniredis.RunT(suite.T())
+	rdb := redis.NewClient(&redis.Options{Addr: suite.mr.Addr()})
+	suite.store = sessions.NewStore(rdb, cfg.Session)
 
-	return claims, err
+	logger, _ := zap.NewDevelopment()
+	suite.middleware = middleware.NewAuthMiddleware(suite.store, cfg, logger)
 }
 
-func (suite *AuthMiddlewareTestSuite) TestGenerateLoginTokens_Success() {
-	userID := int64(123)
-
-	accessToken, refreshToken, err := suite.middleware.GenerateLoginTokens(userID, false)
-
-	suite.NoError(err)
-	suite.NotEmpty(accessToken)
-	suite.NotEmpty(refreshToken)
-	suite.NotEqual(accessToken, refreshToken)
-
-	// Verify access token expiration (2 seconds)
-	accessClaims, err := suite.decodeToken(accessToken, "access")
-	suite.NoError(err)
-	suite.WithinDuration(time.Now().Add(2*time.Second), accessClaims.ExpiresAt.Time, 2*time.Second)
-
-	// Verify refresh token expiration (5 seconds for rememberMe=false)
-	refreshClaims, err := suite.decodeToken(refreshToken, "refresh")
-	suite.NoError(err)
-	suite.WithinDuration(time.Now().Add(5*time.Second), refreshClaims.ExpiresAt.Time, 2*time.Second)
-}
-
-func (suite *AuthMiddlewareTestSuite) TestGenerateLoginTokens_RememberMe() {
-	userID := int64(123)
-
-	accessToken, refreshToken, err := suite.middleware.GenerateLoginTokens(userID, true)
-
-	suite.NoError(err)
-	suite.NotEmpty(accessToken)
-	suite.NotEmpty(refreshToken)
-
-	// Verify refresh token expiration (1 minute for rememberMe=true)
-	refreshClaims, err := suite.decodeToken(refreshToken, "refresh")
-	suite.NoError(err)
-	suite.WithinDuration(time.Now().Add(1*time.Minute), refreshClaims.ExpiresAt.Time, 2*time.Second)
-}
-
-func (suite *AuthMiddlewareTestSuite) TestWebClientAuthentication_ValidAccessToken() {
-	userID := int64(123)
-
-	// Generate valid tokens
-	accessToken, _, err := suite.middleware.GenerateLoginTokens(userID, false)
-	suite.NoError(err)
-
-	handler := suite.middleware.WebClientAuthentication(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		extractedUserID, ok := middleware.GetUserID(r)
-		suite.True(ok)
-		suite.Equal(userID, extractedUserID)
-		w.WriteHeader(http.StatusOK)
-		err := json.NewEncoder(w).Encode(map[string]int64{"user_id": extractedUserID})
-		if err != nil {
-			fmt.Println("encode error", err.Error())
-		}
-	}))
-
-	// Make request with valid access token
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.AddCookie(&http.Cookie{Name: "access", Value: accessToken})
-	w := httptest.NewRecorder()
-
-	handler.ServeHTTP(w, req)
-
-	suite.Equal(http.StatusOK, w.Code)
-}
-
-func (suite *AuthMiddlewareTestSuite) TestWebClientAuthentication_AccessTokenRotation() {
-	userID := int64(123)
-
-	// Create expired access token and valid refresh token
-	expiredAccessToken := suite.createTokenWithExpiry(userID, "access", -5*time.Second)
-	validRefreshToken := suite.createTokenWithExpiry(userID, "refresh", 10*time.Minute)
-
-	handler := suite.middleware.WebClientAuthentication(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		extractedUserID, ok := middleware.GetUserID(r)
-		suite.True(ok)
-		suite.Equal(userID, extractedUserID)
+// protectedHandler records the user ID the middleware put in the request context.
+func (suite *AuthMiddlewareTestSuite) protectedHandler(gotUserID *int64) http.Handler {
+	return suite.middleware.WebClientAuthentication(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := middleware.GetUserID(r)
+		suite.True(ok, "expected user ID in context")
+		*gotUserID = userID
 		w.WriteHeader(http.StatusOK)
 	}))
-
-	// Make request with expired access but valid refresh
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.AddCookie(&http.Cookie{Name: "access", Value: expiredAccessToken})
-	req.AddCookie(&http.Cookie{Name: "refresh", Value: validRefreshToken})
-	w := httptest.NewRecorder()
-
-	handler.ServeHTTP(w, req)
-	suite.Equal(http.StatusOK, w.Code)
-
-	// Verify new access token was issued
-	setCookieHeaders := w.Header()["Set-Cookie"]
-	suite.NotEmpty(setCookieHeaders, "Should have Set-Cookie headers")
-
-	var foundAccessCookie bool
-	for _, header := range setCookieHeaders {
-		if strings.Contains(header, "access=") {
-			foundAccessCookie = true
-			suite.NotContains(header, expiredAccessToken, "Should be a new access token")
-			break
-		}
-	}
-	suite.True(foundAccessCookie, "New access cookie should be issued")
 }
 
-func (suite *AuthMiddlewareTestSuite) TestWebClientAuthentication_BothTokensExpired() {
-	userID := int64(123)
+func (suite *AuthMiddlewareTestSuite) assertUnauthorized(rec *httptest.ResponseRecorder) {
+	suite.Equal(http.StatusUnauthorized, rec.Code)
 
-	// Create both tokens as expired
-	expiredAccessToken := suite.createTokenWithExpiry(userID, "access", -5*time.Second)
-	expiredRefreshToken := suite.createTokenWithExpiry(userID, "refresh", -1*time.Second)
-
-	handler := suite.middleware.WebClientAuthentication(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.Fail("Should not reach handler")
-	}))
-
-	// Make request with both expired tokens
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	req.AddCookie(&http.Cookie{Name: "access", Value: expiredAccessToken})
-	req.AddCookie(&http.Cookie{Name: "refresh", Value: expiredRefreshToken})
-	w := httptest.NewRecorder()
-
-	handler.ServeHTTP(w, req)
-
-	// Should return unauthorized
-	suite.Equal(http.StatusUnauthorized, w.Code)
-
-	var response map[string]string
-	err := json.NewDecoder(w.Body).Decode(&response)
-	suite.NoError(err)
-	suite.Equal("Unauthorized", response["title"])
-	suite.Equal("unauthenticated", response["message"])
+	var body map[string]string
+	suite.Require().NoError(json.NewDecoder(rec.Body).Decode(&body))
+	suite.Equal("Unauthorized", body["title"])
+	suite.Equal("unauthenticated", body["message"])
 }
 
-func (suite *AuthMiddlewareTestSuite) TestWebClientAuthentication_NoTokens() {
+func (suite *AuthMiddlewareTestSuite) TestValidSession() {
+	id, maxAge, err := suite.middleware.CreateLoginSession(suite.T().Context(), 42, false)
+	suite.Require().NoError(err)
+	suite.Equal(int(24*time.Hour.Seconds()), maxAge)
 
-	handler := suite.middleware.WebClientAuthentication(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		suite.Fail("Should not reach handler")
-	}))
+	var gotUserID int64
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: id})
+	rec := httptest.NewRecorder()
 
-	// Make request with no tokens
-	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
-	w := httptest.NewRecorder()
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
 
-	handler.ServeHTTP(w, req)
-
-	// Should return unauthorized
-	suite.Equal(http.StatusUnauthorized, w.Code)
+	suite.Equal(http.StatusOK, rec.Code)
+	suite.Equal(int64(42), gotUserID)
 }
 
-func (suite *AuthMiddlewareTestSuite) createTokenWithExpiry(userID int64, tokenType string, expiryOffset time.Duration) string {
-	var jwtKey []byte
-	switch tokenType {
-	case "access":
-		jwtKey = []byte(suite.cfg.Auth.AccessSecret)
-	case "refresh":
-		jwtKey = []byte(suite.cfg.Auth.RefreshSecret)
-	default:
-		suite.T().Fatalf("unsupported token type: %s", tokenType)
-	}
+func (suite *AuthMiddlewareTestSuite) TestMissingCookie() {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
 
-	encryptedUserID, err := suite.middleware.EncodeWebClientUserID(userID)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
+	var gotUserID int64
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
 
-	claims := &middleware.WebClientUserClaim{
-		UserID: encryptedUserID,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiryOffset)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "go-web-template",
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		suite.T().Fatal(err)
-	}
-
-	return tokenString
+	suite.assertUnauthorized(rec)
 }
 
-func (suite *AuthMiddlewareTestSuite) TestEncodeDecodeUserID() {
-	userID := int64(12345)
+func (suite *AuthMiddlewareTestSuite) TestEmptyCookie() {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: ""})
+	rec := httptest.NewRecorder()
 
-	encoded, err := suite.middleware.EncodeWebClientUserID(userID)
-	suite.NoError(err)
-	suite.NotEmpty(encoded)
+	var gotUserID int64
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
 
-	// The encoded string should be different each time
-	encoded2, err := suite.middleware.EncodeWebClientUserID(userID)
-	suite.NoError(err)
-	suite.NotEqual(encoded, encoded2, "Encryption should use random nonce")
+	suite.assertUnauthorized(rec)
+}
+
+func (suite *AuthMiddlewareTestSuite) TestUnknownSession() {
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: "not-a-real-session"})
+	rec := httptest.NewRecorder()
+
+	var gotUserID int64
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
+
+	suite.assertUnauthorized(rec)
+}
+
+func (suite *AuthMiddlewareTestSuite) TestExpiredSession() {
+	id, _, err := suite.middleware.CreateLoginSession(suite.T().Context(), 42, false)
+	suite.Require().NoError(err)
+
+	suite.mr.FastForward(24 * time.Hour)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: id})
+	rec := httptest.NewRecorder()
+
+	var gotUserID int64
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
+
+	suite.assertUnauthorized(rec)
+}
+
+func (suite *AuthMiddlewareTestSuite) TestDestroySessionRevokesAccess() {
+	id, _, err := suite.middleware.CreateLoginSession(suite.T().Context(), 42, false)
+	suite.Require().NoError(err)
+
+	// Session works before logout.
+	var gotUserID int64
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: id})
+	rec := httptest.NewRecorder()
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
+	suite.Require().Equal(http.StatusOK, rec.Code)
+
+	suite.Require().NoError(suite.middleware.DestroySession(suite.T().Context(), id))
+	suite.False(suite.mr.Exists("session:"+id), "expected redis key to be gone after logout")
+
+	// Same cookie is now rejected.
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: sessions.CookieName, Value: id})
+	rec = httptest.NewRecorder()
+	suite.protectedHandler(&gotUserID).ServeHTTP(rec, req)
+
+	suite.assertUnauthorized(rec)
+}
+
+func (suite *AuthMiddlewareTestSuite) TestCreateLoginSessionRememberMe() {
+	_, maxAge, err := suite.middleware.CreateLoginSession(suite.T().Context(), 42, true)
+	suite.Require().NoError(err)
+
+	suite.Equal(int(720*time.Hour.Seconds()), maxAge)
+}
+
+func (suite *AuthMiddlewareTestSuite) TestSetSessionCookie() {
+	rec := httptest.NewRecorder()
+	suite.middleware.SetSessionCookie(rec, "session-id", 3600)
+
+	cookies := rec.Result().Cookies()
+	suite.Require().Len(cookies, 1)
+
+	c := cookies[0]
+	suite.Equal(sessions.CookieName, c.Name)
+	suite.Equal("session-id", c.Value)
+	suite.Equal("/", c.Path)
+	suite.Equal(3600, c.MaxAge)
+	suite.True(c.HttpOnly)
+	suite.Equal(http.SameSiteLaxMode, c.SameSite)
+	suite.False(c.Secure, "Secure should be off outside production")
+}
+
+func (suite *AuthMiddlewareTestSuite) TestClearSessionCookie() {
+	rec := httptest.NewRecorder()
+	suite.middleware.ClearSessionCookie(rec)
+
+	cookies := rec.Result().Cookies()
+	suite.Require().Len(cookies, 1)
+
+	c := cookies[0]
+	suite.Equal(sessions.CookieName, c.Name)
+	suite.Empty(c.Value)
+	suite.Equal(-1, c.MaxAge)
+	suite.True(c.HttpOnly)
 }

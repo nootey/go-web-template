@@ -1,91 +1,124 @@
 package config
 
 import (
-	"os"
-	"strconv"
+	"errors"
+	"fmt"
 	"strings"
-	"time"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	App      AppConfig
-	Seed     SeedConfig
-	Auth     AuthConfig
+	Server   ServerConfig   `mapstructure:"server"`
+	Cors     CorsConfig     `mapstructure:"cors"`
+	Database DatabaseConfig `mapstructure:"database"`
+	App      AppConfig      `mapstructure:"app"`
+	Seed     SeedConfig     `mapstructure:"seed"`
+	Redis    RedisConfig    `mapstructure:"redis"`
+	Session  SessionConfig  `mapstructure:"session"`
 }
 
 type ServerConfig struct {
-	Host           string
-	Port           string
-	ReadTimeout    int
-	WriteTimeout   int
-	AllowedOrigins []string
+	Host         string `mapstructure:"host"`
+	Port         string `mapstructure:"port"`
+	ReadTimeout  int    `mapstructure:"read_timeout"`
+	WriteTimeout int    `mapstructure:"write_timeout"`
 }
 
-type AuthConfig struct {
-	AccessSecret    string
-	RefreshSecret   string
-	EncodeIDSecret  string
-	AccessTTL       time.Duration
-	RefreshTTLShort time.Duration
-	RefreshTTLLong  time.Duration
+type CorsConfig struct {
+	AllowedOrigins []string `mapstructure:"allowed_origins"`
 }
 
 type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
+	Host     string `mapstructure:"host"`
+	Port     string `mapstructure:"port"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	DBName   string `mapstructure:"name"`
 }
 
 type AppConfig struct {
-	Environment  string
-	LogLevel     string
-	CookieDomain string
+	Environment  string `mapstructure:"environment"`
+	LogLevel     string `mapstructure:"log_level"`
+	CookieDomain string `mapstructure:"cookie_domain"`
 }
 
 type SeedConfig struct {
-	RootUser     string
-	RootPassword string
+	RootUser     string `mapstructure:"root_user"`
+	RootPassword string `mapstructure:"root_password"`
+}
+
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}
+
+type SessionConfig struct {
+	TTLHours           int `mapstructure:"ttl_hours"`
+	RememberMeTTLHours int `mapstructure:"remember_me_ttl_hours"`
 }
 
 var cfg *Config
 
+// setDefaults doubles as the key registry: AutomaticEnv only resolves keys viper
+// already knows about, so a key absent here is not overridable by env var.
+func setDefaults(v *viper.Viper) {
+	v.SetDefault("server.host", "127.0.0.1")
+	v.SetDefault("server.port", "8080")
+	v.SetDefault("server.read_timeout", 10)
+	v.SetDefault("server.write_timeout", 10)
+
+	v.SetDefault("cors.allowed_origins", []string{"http://localhost:3030", "http://localhost:5173"})
+
+	v.SetDefault("database.host", "localhost")
+	v.SetDefault("database.port", "5432")
+	v.SetDefault("database.user", "postgres")
+	v.SetDefault("database.password", "postgres")
+	v.SetDefault("database.name", "go-web-template")
+
+	v.SetDefault("app.environment", "local")
+	v.SetDefault("app.log_level", "debug")
+	v.SetDefault("app.cookie_domain", "")
+
+	v.SetDefault("seed.root_user", "root@local.host")
+	v.SetDefault("seed.root_password", "password")
+
+	v.SetDefault("redis.host", "localhost")
+	v.SetDefault("redis.port", 6379)
+	v.SetDefault("redis.password", "")
+	v.SetDefault("redis.db", 0)
+
+	v.SetDefault("session.ttl_hours", 24)
+	v.SetDefault("session.remember_me_ttl_hours", 720)
+}
+
 func Load() error {
-	cfg = &Config{
-		Server: ServerConfig{
-			Host:           getEnv("SERVER_HOST", "127.0.0.1"),
-			Port:           getEnv("SERVER_PORT", "8080"),
-			ReadTimeout:    getEnvAsInt("SERVER_READ_TIMEOUT", 10),
-			WriteTimeout:   getEnvAsInt("SERVER_WRITE_TIMEOUT", 10),
-			AllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", []string{"http://localhost:3000", "http://localhost:5173"}),
-		},
-		Database: DatabaseConfig{
-			Host:     getEnv("DB_HOST", "localhost"),
-			Port:     getEnv("DB_PORT", "5432"),
-			User:     getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "postgres"),
-			DBName:   getEnv("DB_NAME", "go-web-template"),
-		},
-		App: AppConfig{
-			Environment:  getEnv("ENVIRONMENT", "local"),
-			LogLevel:     getEnv("LOG_LEVEL", "debug"),
-			CookieDomain: getEnv("COOKIE_DOMAIN", ""),
-		},
-		Seed: SeedConfig{
-			RootUser:     getEnv("ROOT_USER", "root@local.host"),
-			RootPassword: getEnv("ROOT_PASSWORD", "password"),
-		},
-		Auth: AuthConfig{
-			AccessSecret:    getEnv("JWT_ACCESS_SECRET", ""),
-			RefreshSecret:   getEnv("JWT_REFRESH_SECRET", ""),
-			EncodeIDSecret:  getEnv("JWT_ENCODE_ID_SECRET", ""),
-			AccessTTL:       time.Duration(getEnvAsInt("TTL_ACCESS", 600)) * time.Second,
-			RefreshTTLShort: time.Duration(getEnvAsInt("TTL_REFRESH_SHORT", 86400)) * time.Second,
-			RefreshTTLLong:  time.Duration(getEnvAsInt("TTL_REFRESH_LONG", 604800)) * time.Second,
-		},
+	v := viper.New()
+
+	setDefaults(v)
+
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	c := &Config{}
+	if err := v.Unmarshal(c); err != nil {
+		return fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if err := c.validate(); err != nil {
+		return err
+	}
+
+	cfg = c
+	return nil
+}
+
+// validate rejects config combinations that unmarshal fine but are unsafe to run with.
+func (c *Config) validate() error {
+	if c.App.Environment == "production" && c.Redis.Password == "" {
+		return errors.New("redis password is required when app.environment is production")
 	}
 	return nil
 }
@@ -95,27 +128,4 @@ func Get() *Config {
 		panic("config not loaded")
 	}
 	return cfg
-}
-
-func getEnv(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
-}
-
-func getEnvAsInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intVal, err := strconv.Atoi(value); err == nil {
-			return intVal
-		}
-	}
-	return defaultValue
-}
-
-func getEnvSlice(key string, defaultVal []string) []string {
-	if val := os.Getenv(key); val != "" {
-		return strings.Split(val, ",")
-	}
-	return defaultVal
 }
