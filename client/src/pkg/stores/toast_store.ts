@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { useToast } from "primevue/usetoast";
-import axios from "axios";
+import { ApiError } from "../api/api_models.ts";
 
 export const useToastStore = defineStore("toast", () => {
     const toast = useToast();
@@ -13,24 +13,20 @@ export const useToastStore = defineStore("toast", () => {
         let summary = "Unexpected Error";
         let detail = "An unknown error occurred.";
 
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data as { title?: string; message?: string } | undefined;
+        if (error instanceof ApiError) {
+            const data = error.data as { title?: string; message?: string } | undefined;
 
             if (data?.title || data?.message) {
                 summary = data.title ?? "Error";
                 detail = data.message ?? "Something went wrong.";
             }
 
-            if (!error.response || error.code === "ERR_NETWORK" || error.message === "Network Error") {
+            if (error.isNetworkError) {
                 summary = "Server unreachable";
                 detail = "The server is currently not reachable.";
             }
 
-            if (
-                (!data?.message || detail === "Something went wrong.") &&
-                error.message &&
-                error.message !== "Request failed with status code 500"
-            ) {
+            if ((!data?.message || detail === "Something went wrong.") && error.message) {
                 detail = error.message;
             }
         } else if (error instanceof Error) {

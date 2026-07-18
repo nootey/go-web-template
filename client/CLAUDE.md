@@ -2,13 +2,13 @@
 
 ## Stack
 
-Vue 3 + TypeScript, PrimeVue 4 components, PrimeFlex utility classes.
+Vue 3 + TypeScript, PrimeVue 4 components, Tailwind CSS utility classes.
 
 ## Styling
 
-- Do NOT write custom CSS classes. Use inline PrimeFlex utility classes instead.
-- For responsive styles that require a media query, use a scoped `<style>` block with an `id`-based selector - never a custom class.
-- Do not use arbitrary inline `style` attributes for spacing/layout - reach for PrimeFlex first.
+- Do NOT write custom CSS classes. Use inline Tailwind utility classes instead.
+- For responsive styles, use Tailwind's responsive prefixes (`sm:`, `md:`, `lg:`) - never a custom class.
+- Do not use arbitrary inline `style` attributes for spacing/layout - reach for Tailwind first.
 
 ## Components
 

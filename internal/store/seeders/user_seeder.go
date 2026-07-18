@@ -48,6 +48,10 @@ func SeedRootUser(ctx context.Context, q *database.Queries, logger *zap.Logger, 
 		return err
 	}
 
+	if err := q.ConfirmUserEmail(ctx, user.ID); err != nil {
+		return err
+	}
+
 	logger.Info("root user created",
 		zap.String("email", user.Email),
 		zap.Int64("id", user.ID),

@@ -1,87 +1,60 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { ApiError } from "../../../pkg/api/api_models.ts";
+import { useRouter } from "vue-router";
 import { useAuthStore } from "../../../pkg/stores/auth_store.ts";
 import { useToastStore } from "../../../pkg/stores/toast_store.ts";
 import type { AuthForm } from "../models.ts";
 import { useRegle } from "@regle/core";
 import AuthSkeleton from "../../../pkg/components/AuthSkeleton.vue";
 import ValidationError from "../../../pkg/components/ValidationError.vue";
-import { email, required } from "@regle/rules";
+import { email, minLength, required, sameAs } from "@regle/rules";
 
 const authStore = useAuthStore();
 const toastStore = useToastStore();
 
 const router = useRouter();
-const route = useRoute();
 
 const loading = ref<boolean>(false);
 
 const form = ref<AuthForm>({
+    display_name: "",
     email: "",
     password: "",
-    remember_me: false,
+    password_confirmation: "",
 });
 
 const { r$ } = useRegle(form, {
+    display_name: {
+        required,
+    },
     email: {
         required,
         email,
     },
     password: {
         required,
+        minLength: minLength(8),
+    },
+    password_confirmation: {
+        required,
+        sameAs: sameAs(() => form.value.password),
     },
 });
 
-function resolveRedirect(): string {
-    const q = route.query.redirect as string | string[] | undefined;
-    const redirect = Array.isArray(q) ? q[0] : q;
-
-    if (typeof redirect !== "string") return "/";
-
-    // Disallow absolute URLs or protocol-relative
-    if (/^https?:\/\//i.test(redirect) || redirect.startsWith("//")) return "/";
-
-    // Allow only root-relative paths
-    if (!redirect.startsWith("/")) return "/";
-
-    // Avoid looping back to login
-    if (redirect === "/login") return "/";
-
-    return redirect;
-}
-
-async function login() {
+async function signUp() {
     await r$.$validate();
     if (r$.$invalid) return;
 
     loading.value = true;
     try {
-        await authStore.login(form.value);
-
-        if (authStore.authenticated) {
-            const target = resolveRedirect();
-            await router.replace(target);
-        }
+        const response = await authStore.signUp(form.value);
+        toastStore.successResponseToast(response);
+        await router.push({ name: "login" });
     } catch (error) {
         toastStore.errorResponseToast(error);
-        // 403 from login means the credentials are valid but the email is
-        // unconfirmed, so send the user to the resend-confirmation page.
-        if (error instanceof ApiError && error.status === 403) {
-            await router.push({ name: "confirm.email", query: { email: form.value.email } });
-        }
     } finally {
         loading.value = false;
     }
-}
-
-function signUp() {
-    router.push({ name: "sign.up" });
-}
-
-function forgotPassword() {
-    router.push({ name: "forgot.password" });
 }
 </script>
 
@@ -89,6 +62,22 @@ function forgotPassword() {
     <AuthSkeleton>
         <div class="w-full max-w-md mx-auto px-3 sm:px-0">
             <div class="flex flex-col gap-3">
+                <div class="flex flex-row w-full">
+                    <div class="flex flex-col gap-1 w-full">
+                        <ValidationError :is-required="true" :message="r$.display_name.$errors[0]">
+                            <label>Display name</label>
+                        </ValidationError>
+                        <InputText
+                            id="display_name"
+                            v-model="form.display_name"
+                            type="text"
+                            :placeholder="'Display name'"
+                            :disabled="loading"
+                            class="w-full rounded-xl"
+                        />
+                    </div>
+                </div>
+
                 <div class="flex flex-row w-full">
                     <div class="flex flex-col gap-1 w-full">
                         <ValidationError :is-required="true" :message="r$.email.$errors[0]">
@@ -99,6 +88,7 @@ function forgotPassword() {
                             v-model="form.email"
                             type="email"
                             :placeholder="'Email'"
+                            :disabled="loading"
                             class="w-full rounded-xl"
                         />
                     </div>
@@ -114,44 +104,45 @@ function forgotPassword() {
                             v-model="form.password"
                             type="password"
                             :placeholder="'Password'"
+                            :disabled="loading"
                             class="w-full rounded-xl"
-                            @keydown.enter="login"
                         />
                     </div>
                 </div>
 
-                <div class="flex flex-row w-full justify-between">
-                    <div class="flex flex-row items-center gap-2">
-                        <Checkbox v-model="form.remember_me" input-id="rememberMe" :binary="true" class="scale-90" />
-                        <label for="rememberMe" class="text-sm cursor-pointer text-gray-600 dark:text-gray-400">
-                            Remember me
-                        </label>
+                <div class="flex flex-row w-full">
+                    <div class="flex flex-col gap-1 w-full">
+                        <ValidationError :is-required="true" :message="r$.password_confirmation.$errors[0]">
+                            <label>Confirm password</label>
+                        </ValidationError>
+                        <InputText
+                            id="password_confirmation"
+                            v-model="form.password_confirmation"
+                            type="password"
+                            :placeholder="'Confirm password'"
+                            :disabled="loading"
+                            class="w-full rounded-xl"
+                            @keydown.enter="signUp"
+                        />
                     </div>
-
-                    <span
-                        class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
-                        @click="forgotPassword"
-                    >
-                        Forgot password?
-                    </span>
                 </div>
 
                 <Button
-                    :label="loading ? 'Signing in...' : 'Sign in'"
+                    :label="loading ? 'Creating account...' : 'Sign up'"
                     :icon="loading ? 'pi pi-spin pi-spinner mr-2' : ''"
                     class="w-full auth-accent-button"
                     :disabled="loading"
-                    @click="login"
+                    @click="signUp"
                 />
             </div>
 
             <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Don't have an account?</span>
+                <span class="text-sm text-gray-600 dark:text-gray-400">Already have an account?</span>
                 <span
                     class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
-                    @click="signUp"
+                    @click="router.push({ name: 'login' })"
                 >
-                    Create account
+                    Log in
                 </span>
             </div>
         </div>

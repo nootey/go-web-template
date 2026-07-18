@@ -9,13 +9,16 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Cors     CorsConfig     `mapstructure:"cors"`
-	Database DatabaseConfig `mapstructure:"database"`
-	App      AppConfig      `mapstructure:"app"`
-	Seed     SeedConfig     `mapstructure:"seed"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Session  SessionConfig  `mapstructure:"session"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Cors      CorsConfig      `mapstructure:"cors"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	App       AppConfig       `mapstructure:"app"`
+	Seed      SeedConfig      `mapstructure:"seed"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Session   SessionConfig   `mapstructure:"session"`
+	Mailer    MailerConfig    `mapstructure:"mailer"`
+	Token     TokenConfig     `mapstructure:"token"`
+	WebClient WebClientConfig `mapstructure:"web_client"`
 }
 
 type ServerConfig struct {
@@ -43,6 +46,11 @@ type AppConfig struct {
 	CookieDomain string `mapstructure:"cookie_domain"`
 }
 
+type WebClientConfig struct {
+	Domain string `mapstructure:"domain"`
+	Port   string `mapstructure:"port"`
+}
+
 type SeedConfig struct {
 	RootUser     string `mapstructure:"root_user"`
 	RootPassword string `mapstructure:"root_password"`
@@ -58,6 +66,20 @@ type RedisConfig struct {
 type SessionConfig struct {
 	TTLHours           int `mapstructure:"ttl_hours"`
 	RememberMeTTLHours int `mapstructure:"remember_me_ttl_hours"`
+}
+
+type MailerConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	From     string `mapstructure:"from"`
+	FromName string `mapstructure:"from_name"`
+}
+
+type TokenConfig struct {
+	ConfirmTTLHours int `mapstructure:"confirm_ttl_hours"`
+	ResetTTLMinutes int `mapstructure:"reset_ttl_minutes"`
 }
 
 var cfg *Config
@@ -82,6 +104,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.log_level", "debug")
 	v.SetDefault("app.cookie_domain", "")
 
+	v.SetDefault("web_client.domain", "localhost")
+	v.SetDefault("web_client.port", "5173")
+
 	v.SetDefault("seed.root_user", "root@local.host")
 	v.SetDefault("seed.root_password", "password")
 
@@ -92,6 +117,16 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("session.ttl_hours", 24)
 	v.SetDefault("session.remember_me_ttl_hours", 720)
+
+	v.SetDefault("mailer.host", "")
+	v.SetDefault("mailer.port", 587)
+	v.SetDefault("mailer.username", "")
+	v.SetDefault("mailer.password", "")
+	v.SetDefault("mailer.from", "no-reply@localhost")
+	v.SetDefault("mailer.from_name", "Go Web Template")
+
+	v.SetDefault("token.confirm_ttl_hours", 24)
+	v.SetDefault("token.reset_ttl_minutes", 60)
 }
 
 func Load() error {

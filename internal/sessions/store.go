@@ -50,6 +50,9 @@ func (s *Store) Create(ctx context.Context, userID int64, rememberMe bool) (stri
 		"created_at": time.Now().Unix(),
 	})
 	pipe.Expire(ctx, key(id), ttl)
+	// Index by user so all of a user's sessions can be revoked at once.
+	pipe.SAdd(ctx, userKey(userID), id)
+	pipe.Expire(ctx, userKey(userID), ttl)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return "", fmt.Errorf("failed to store session: %w", err)
 	}
@@ -77,12 +80,46 @@ func (s *Store) Validate(ctx context.Context, id string) (int64, error) {
 }
 
 func (s *Store) Delete(ctx context.Context, id string) error {
-	if err := s.rdb.Del(ctx, key(id)).Err(); err != nil {
+	// Read the owner first so the id can also be dropped from its user index.
+	userID, err := s.rdb.HGet(ctx, key(id), "user_id").Result()
+	if err != nil && !errors.Is(err, redis.Nil) {
+		return fmt.Errorf("failed to read session: %w", err)
+	}
+
+	pipe := s.rdb.TxPipeline()
+	pipe.Del(ctx, key(id))
+	if err == nil {
+		if uid, perr := strconv.ParseInt(userID, 10, 64); perr == nil {
+			pipe.SRem(ctx, userKey(uid), id)
+		}
+	}
+	if _, err := pipe.Exec(ctx); err != nil {
 		return fmt.Errorf("failed to delete session: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) DeleteAllForUser(ctx context.Context, userID int64) error {
+	ids, err := s.rdb.SMembers(ctx, userKey(userID)).Result()
+	if err != nil {
+		return fmt.Errorf("failed to read user sessions: %w", err)
+	}
+
+	pipe := s.rdb.TxPipeline()
+	for _, id := range ids {
+		pipe.Del(ctx, key(id))
+	}
+	pipe.Del(ctx, userKey(userID))
+	if _, err := pipe.Exec(ctx); err != nil {
+		return fmt.Errorf("failed to delete user sessions: %w", err)
 	}
 	return nil
 }
 
 func key(id string) string {
 	return "session:" + id
+}
+
+func userKey(userID int64) string {
+	return "user:sessions:" + strconv.FormatInt(userID, 10)
 }
