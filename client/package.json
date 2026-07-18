@@ -17,7 +17,6 @@
         "@primeuix/themes": "^2.0.3",
         "@regle/core": "^1.28.3",
         "@regle/rules": "^1.28.3",
-        "axios": "^1.18.1",
         "eslint-config-prettier": "^10.1.8",
         "pinia": "^4.0.2",
         "primeicons": "^7.0.0",

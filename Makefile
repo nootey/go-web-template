@@ -36,15 +36,33 @@ sqlc:
 
 # Tests
 test:
-	go test -v ./...
+	go test -race -count=1 ./...
 
 test-coverage:
-	go test -coverprofile=coverage.out ./...
+	go test -race -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report: coverage.html"
 
 # Lint
 lint:
 	golangci-lint run
 
 lint-fix:
+	gofmt -w .
 	golangci-lint run --fix
+
+tidy:
+	go mod tidy
+	go mod verify
+
+# Pre push checklist
+pre-push:
+	@echo "--- App ---"
+	@go build ./... && echo "build successful" || (echo "build failed" && exit 1)
+	@golangci-lint run && echo "lint successful" || (echo "lint failed" && exit 1)
+	@go test -race -count=1 ./... && echo "tests successful" || (echo "tests failed" && exit 1)
+	@echo ""
+	@echo "--- Client ---"
+	@cd client && pnpm run build && echo "build successful" || (echo "build failed" && exit 1)
+	@cd client && pnpm run format && echo "format successful" || (echo "format failed" && exit 1)
+	@cd client && pnpm run lint && echo "lint successful" || (echo "lint failed" && exit 1)

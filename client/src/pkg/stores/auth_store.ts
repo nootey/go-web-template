@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import apiClient from "../api/axios.ts";
+import apiClient from "../api/api_client.ts";
 import { useThemeStore } from "./theme_store.ts";
 import type { User } from "../../domains/user/models.ts";
 import type { AuthForm } from "../../domains/auth/models.ts";
