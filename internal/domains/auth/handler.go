@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"go-web-template/internal/middleware"
 	"go-web-template/internal/sessions"
 	"go-web-template/internal/utils"
@@ -35,6 +36,10 @@ func (h *AuthHandler) Routes() chi.Router {
 	// Public routes
 	r.Post("/login", h.Login)
 	r.Post("/register", h.Register)
+	r.Get("/confirm-email", h.ConfirmEmail)
+	r.Post("/resend-confirmation", h.ResendConfirmation)
+	r.Post("/request-password-reset", h.RequestPasswordReset)
+	r.Post("/reset-password", h.ResetPassword)
 	// Logout reads the session cookie directly, so it stays public: an expired
 	// session must still be able to clear its cookie.
 	r.Post("/logout", h.Logout)
@@ -57,6 +62,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.service.ValidateCredentials(r.Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, ErrEmailNotConfirmed) {
+			utils.RespondError(w, http.StatusForbidden, err.Error())
+			return
+		}
 		utils.RespondError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
@@ -88,25 +97,79 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.CreateUser(r.Context(), req.DisplayName, req.Email, req.Password)
-	if err != nil {
+	if err := h.service.Register(r.Context(), req.DisplayName, req.Email, req.Password); err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	sessionID, maxAge, err := h.authMiddleware.CreateLoginSession(r.Context(), user.ID, false)
-	if err != nil {
+	// No auto-login: the account is unconfirmed until the emailed link is used.
+	utils.RespondSuccess(w, http.StatusCreated, "Registration successful. Please check your email to confirm your account.")
+}
+
+func (h *AuthHandler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		utils.RespondError(w, http.StatusBadRequest, "missing token")
+		return
+	}
+
+	if err := h.service.ConfirmEmail(r.Context(), token); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, "invalid or expired token")
+		return
+	}
+
+	utils.RespondSuccess(w, http.StatusOK, "Email confirmed. You can now log in.")
+}
+
+func (h *AuthHandler) ResendConfirmation(w http.ResponseWriter, r *http.Request) {
+	var req ConfirmResendRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.service.ResendConfirmation(r.Context(), req.Email); err != nil {
 		utils.RespondError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	h.authMiddleware.SetSessionCookie(w, sessionID, maxAge)
+	utils.RespondSuccess(w, http.StatusOK, "If the account exists and is unconfirmed, a confirmation email has been sent.")
+}
 
-	utils.RespondJSON(w, http.StatusCreated, MeResponse{
-		ID:          user.ID,
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
-	})
+func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req RequestResetRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.service.RequestPasswordReset(r.Context(), req.Email); err != nil {
+		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.RespondSuccess(w, http.StatusOK, "If the account exists, a password reset email has been sent.")
+}
+
+func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req ResetPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	userID, err := h.service.ResetPassword(r.Context(), req.Token, req.Password, req.PasswordConfirmation)
+	if err != nil {
+		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Revoke existing sessions so an old one can't outlive the password change.
+	if err := h.authMiddleware.RevokeAllSessions(r.Context(), userID); err != nil {
+		h.logger.Error("failed to revoke sessions after password reset", zap.Error(err))
+	}
+
+	utils.RespondSuccess(w, http.StatusOK, "Password updated. Please log in with your new password.")
 }
 
 func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {

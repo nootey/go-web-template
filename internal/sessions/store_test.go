@@ -106,3 +106,28 @@ func (suite *StoreTestSuite) TestDelete() {
 func (suite *StoreTestSuite) TestDeleteUnknownSessionIsNoOp() {
 	suite.NoError(suite.store.Delete(suite.ctx, "does-not-exist"))
 }
+
+func (suite *StoreTestSuite) TestDeleteAllForUser() {
+	first, err := suite.store.Create(suite.ctx, 42, false)
+	suite.Require().NoError(err)
+	second, err := suite.store.Create(suite.ctx, 42, false)
+	suite.Require().NoError(err)
+	other, err := suite.store.Create(suite.ctx, 99, false)
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.store.DeleteAllForUser(suite.ctx, 42))
+
+	_, err = suite.store.Validate(suite.ctx, first)
+	suite.ErrorIs(err, sessions.ErrNotFound)
+	_, err = suite.store.Validate(suite.ctx, second)
+	suite.ErrorIs(err, sessions.ErrNotFound)
+
+	// Another user's session is untouched.
+	userID, err := suite.store.Validate(suite.ctx, other)
+	suite.Require().NoError(err)
+	suite.Equal(int64(99), userID)
+}
+
+func (suite *StoreTestSuite) TestDeleteAllForUserNoSessionsIsNoOp() {
+	suite.NoError(suite.store.DeleteAllForUser(suite.ctx, 12345))
+}

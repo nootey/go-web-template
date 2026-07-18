@@ -20,6 +20,7 @@ type AuthMiddlewareInterface interface {
 	WebClientAuthentication(next http.Handler) http.Handler
 	CreateLoginSession(ctx context.Context, userID int64, rememberMe bool) (id string, maxAge int, err error)
 	DestroySession(ctx context.Context, sessionID string) error
+	RevokeAllSessions(ctx context.Context, userID int64) error
 	SetSessionCookie(w http.ResponseWriter, id string, maxAge int)
 	ClearSessionCookie(w http.ResponseWriter)
 }
@@ -72,6 +73,10 @@ func (m *AuthMiddleware) CreateLoginSession(ctx context.Context, userID int64, r
 
 func (m *AuthMiddleware) DestroySession(ctx context.Context, sessionID string) error {
 	return m.store.Delete(ctx, sessionID)
+}
+
+func (m *AuthMiddleware) RevokeAllSessions(ctx context.Context, userID int64) error {
+	return m.store.DeleteAllForUser(ctx, userID)
 }
 
 func (m *AuthMiddleware) SetSessionCookie(w http.ResponseWriter, id string, maxAge int) {

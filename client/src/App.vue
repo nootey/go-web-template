@@ -23,7 +23,8 @@ onMounted(async () => {
 </script>
 
 <template>
-    <Toast position="top-center" group="bc" />
+    <Toast position="bottom-center" group="bc" />
+    <Toast position="bottom-right" group="br" />
     <ConfirmDialog unstyled>
         <template #container="{ message, acceptCallback, rejectCallback }">
             <div class="flex justify-center items-center p-overlay-mask p-overlay-mask-enter">

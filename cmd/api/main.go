@@ -23,8 +23,10 @@ import (
 
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
+	"go-web-template/internal/mailer"
 	"go-web-template/internal/sessions"
 	"go-web-template/internal/store"
+	"go-web-template/internal/tokens"
 	"go-web-template/pkg/logging"
 )
 
@@ -82,9 +84,13 @@ func main() {
 	sessionStore := sessions.NewStore(rdb, cfg.Session)
 	authMiddleware := mWare.NewAuthMiddleware(sessionStore, cfg, logger)
 
+	// Initialize infrastructure
+	tokenStore := tokens.NewStore(rdb, cfg.Token)
+	mail := mailer.NewMailer(cfg.Mailer, logger)
+
 	// Initialize services
 	userService := user.NewUserService(queries)
-	authService := auth.NewAuthService(queries)
+	authService := auth.NewAuthService(queries, tokenStore, mail, cfg)
 	// Add more services as needed
 
 	// Initialize handlers

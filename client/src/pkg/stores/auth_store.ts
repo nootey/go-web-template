@@ -27,14 +27,14 @@ export const useAuthStore = defineStore("auth", {
         },
 
         async signUp(form: AuthForm, invitation_id: number | null = null) {
-            return await apiClient.post(`${this.apiPrefix}/signup`, {
+            return await apiClient.post(`${this.apiPrefix}/register`, {
                 ...form,
                 ...(invitation_id && { invitation_id }),
             });
         },
 
         async resendConfirmationEmail(email?: string) {
-            return await apiClient.post(`${this.apiPrefix}/resend-confirmation-email`, { email: email });
+            return await apiClient.post(`${this.apiPrefix}/resend-confirmation`, { email: email });
         },
 
         async requestPasswordReset(email?: string) {
@@ -43,8 +43,8 @@ export const useAuthStore = defineStore("auth", {
             });
         },
 
-        async resetPassword(form: AuthForm) {
-            return await apiClient.post(`${this.apiPrefix}/reset-password`, form);
+        async resetPassword(payload: { token: string; password: string; password_confirmation: string }) {
+            return await apiClient.post(`${this.apiPrefix}/reset-password`, payload);
         },
 
         async getAuthUser(set = true) {

@@ -2,6 +2,9 @@
 run:
 	go run cmd/api/main.go
 
+mock:
+	mockery --config=.mockery.yaml
+
 # Migrations (using Go wrapper)
 migrate-up:
 	go run cmd/migrate/main.go up
@@ -57,6 +60,8 @@ tidy:
 
 # Pre push checklist
 pre-push:
+	@echo "--- Bootstrap ---"
+	mockery --config=.mockery.yaml
 	@echo "--- App ---"
 	@go build ./... && echo "build successful" || (echo "build failed" && exit 1)
 	@golangci-lint run && echo "lint successful" || (echo "lint failed" && exit 1)

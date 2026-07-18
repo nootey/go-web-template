@@ -26,10 +26,7 @@ export const useToastStore = defineStore("toast", () => {
                 detail = "The server is currently not reachable.";
             }
 
-            if (
-                (!data?.message || detail === "Something went wrong.") &&
-                error.message
-            ) {
+            if ((!data?.message || detail === "Something went wrong.") && error.message) {
                 detail = error.message;
             }
         } else if (error instanceof Error) {

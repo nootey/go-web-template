@@ -25,3 +25,11 @@ WHERE id = $1 AND deleted_at IS NULL;
 SELECT * FROM roles
 WHERE is_default = true
     LIMIT 1;
+
+-- name: ConfirmUserEmail :exec
+UPDATE users SET email_confirmed = NOW(), updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: UpdateUserPassword :exec
+UPDATE users SET password = $2, updated_at = NOW()
+WHERE id = $1 AND deleted_at IS NULL;
