@@ -1,0 +1,7 @@
+# Generated
+components.d.ts
+dist
+
+# Lockfiles / package manager
+pnpm-lock.yaml
+pnpm-workspace.yaml
