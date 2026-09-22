@@ -12,7 +12,7 @@ import (
 	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 )
 
 func main() {

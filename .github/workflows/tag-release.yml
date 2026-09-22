@@ -10,9 +10,8 @@ jobs:
   tag-release:
     if: |
       github.event.pull_request.merged == true &&
-      (contains(github.event.pull_request.labels.*.name, 'release:major') ||
-       contains(github.event.pull_request.labels.*.name, 'release:minor') ||
-       contains(github.event.pull_request.labels.*.name, 'release:patch'))
+      (contains(github.event.pull_request.labels.*.name, 'release:minor') ||
+       contains(github.event.pull_request.labels.*.name, 'release:fix'))
 
     runs-on: ubuntu-latest
     permissions:
@@ -20,33 +19,36 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Determine version bump
         id: bump
         run: |
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          LATEST_TAG=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          LATEST_TAG=${LATEST_TAG:-v0.0.0}
           VERSION=${LATEST_TAG#v}
           MAJOR=$(echo $VERSION | cut -d. -f1)
           MINOR=$(echo $VERSION | cut -d. -f2)
           PATCH=$(echo $VERSION | cut -d. -f3)
-          
+
           LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
-          
-          if echo "$LABELS" | grep -q "release:major"; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-          elif echo "$LABELS" | grep -q "release:minor"; then
+
+          if echo "$LABELS" | grep -q '"release:minor"'; then
             MINOR=$((MINOR + 1))
             PATCH=0
           else
             PATCH=$((PATCH + 1))
           fi
-          
+
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+
+          if ! [[ "$NEW_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Refusing to tag: computed '$NEW_VERSION' from latest tag '$LATEST_TAG'" >&2
+            exit 1
+          fi
+
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "Creating version: $NEW_VERSION"
 

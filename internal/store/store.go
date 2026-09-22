@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 
 	_ "github.com/lib/pq"
 )

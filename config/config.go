@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
 )
 
@@ -22,10 +23,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         string `mapstructure:"port"`
-	ReadTimeout  int    `mapstructure:"read_timeout"`
-	WriteTimeout int    `mapstructure:"write_timeout"`
+	Host         string `mapstructure:"host" validate:"required"`
+	Port         string `mapstructure:"port" validate:"required"`
+	ReadTimeout  int    `mapstructure:"read_timeout" validate:"gte=0"`
+	WriteTimeout int    `mapstructure:"write_timeout" validate:"gte=0"`
 }
 
 type CorsConfig struct {
@@ -33,16 +34,16 @@ type CorsConfig struct {
 }
 
 type DatabaseConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
+	Host     string `mapstructure:"host" validate:"required"`
+	Port     string `mapstructure:"port" validate:"required"`
+	User     string `mapstructure:"user" validate:"required"`
 	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"name"`
+	DBName   string `mapstructure:"name" validate:"required"`
 }
 
 type AppConfig struct {
-	Environment  string `mapstructure:"environment"`
-	LogLevel     string `mapstructure:"log_level"`
+	Environment  string `mapstructure:"environment" validate:"required,oneof=local development production"`
+	LogLevel     string `mapstructure:"log_level" validate:"required,oneof=debug info warn error fatal"`
 	CookieDomain string `mapstructure:"cookie_domain"`
 }
 
@@ -57,15 +58,15 @@ type SeedConfig struct {
 }
 
 type RedisConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
+	Host     string `mapstructure:"host" validate:"required"`
+	Port     int    `mapstructure:"port" validate:"gt=0"`
 	Password string `mapstructure:"password"`
-	DB       int    `mapstructure:"db"`
+	DB       int    `mapstructure:"db" validate:"gte=0"`
 }
 
 type SessionConfig struct {
-	TTLHours           int `mapstructure:"ttl_hours"`
-	RememberMeTTLHours int `mapstructure:"remember_me_ttl_hours"`
+	TTLHours           int `mapstructure:"ttl_hours" validate:"gt=0"`
+	RememberMeTTLHours int `mapstructure:"remember_me_ttl_hours" validate:"gt=0"`
 }
 
 type MailerConfig struct {
@@ -78,8 +79,8 @@ type MailerConfig struct {
 }
 
 type TokenConfig struct {
-	ConfirmTTLHours int `mapstructure:"confirm_ttl_hours"`
-	ResetTTLMinutes int `mapstructure:"reset_ttl_minutes"`
+	ConfirmTTLHours int `mapstructure:"confirm_ttl_hours" validate:"gt=0"`
+	ResetTTLMinutes int `mapstructure:"reset_ttl_minutes" validate:"gt=0"`
 }
 
 var cfg *Config
@@ -152,6 +153,12 @@ func Load() error {
 
 // validate rejects config combinations that unmarshal fine but are unsafe to run with.
 func (c *Config) validate() error {
+	// Field-level rules come from the `validate` struct tags.
+	if err := validator.New().Struct(c); err != nil {
+		return fmt.Errorf("invalid config: %w", err)
+	}
+
+	// Cross-field rules that the tags cannot express live here.
 	if c.App.Environment == "production" && c.Redis.Password == "" {
 		return errors.New("redis password is required when app.environment is production")
 	}

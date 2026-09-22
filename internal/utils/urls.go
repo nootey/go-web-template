@@ -1,6 +1,6 @@
 package utils
 
-import "go-web-template/internal/config"
+import "go-web-template/config"
 
 // APIBaseURL returns the API base URL; https with no port in production.
 func APIBaseURL(cfg *config.Config) string {

@@ -1,0 +1,135 @@
+services:
+  traefik:
+    image: traefik:latest
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Redirect HTTP → HTTPS
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # ACME
+      - --certificatesresolvers.le.acme.email=${TRAEFIK_EMAIL-support@example.com}
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_letsencrypt:/letsencrypt
+    networks:
+      - app_network
+
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-go_template}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-go_template}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+  migrate:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${POSTGRES_USER:-postgres}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DATABASE_NAME=${POSTGRES_DB:-go_template}
+    entrypoint: ["migrate"]
+    command: ["up"]
+    networks:
+      - app_network
+
+  api:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-development}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=${SERVER_PORT:-8080}
+      - DATABASE_HOST=db
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${POSTGRES_USER:-postgres}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - DATABASE_NAME=${POSTGRES_DB:-go_template}
+      - DATABASE_SSL_MODE=disable
+      - REDIS_HOST=redis
+    volumes:
+      - ./logs:/app/logs
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`${HOST:-localhost}`) && PathPrefix(`/api`)
+      - traefik.http.routers.api.entrypoints=websecure
+      - traefik.http.routers.api.tls.certresolver=le
+      - traefik.http.services.api.loadbalancer.server.port=${SERVER_PORT:-8080}
+    networks:
+      - app_network
+
+  client:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile.client
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.client.rule=Host(`${HOST:-localhost}`) && PathPrefix(`/`)
+      - traefik.http.routers.client.entrypoints=websecure
+      - traefik.http.routers.client.tls.certresolver=le
+      - traefik.http.services.client.loadbalancer.server.port=80
+    networks:
+      - app_network
+
+volumes:
+  postgres_data:
+  redis:
+  traefik_letsencrypt:
+
+networks:
+  app_network:

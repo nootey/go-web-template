@@ -11,34 +11,29 @@ import (
 )
 
 func InitLogger(release bool, logLevel string) *zap.Logger {
-	var cfg zap.Config
+	level := zap.NewAtomicLevelAt(parseLogLevel(logLevel))
 
-	if release {
-		cfg = zap.NewProductionConfig()
-	} else {
-		cfg = zap.NewDevelopmentConfig()
-	}
-
-	logFile := getLogFilePath()
-
-	cfg.OutputPaths = []string{
-		"stdout",
-		logFile,
-	}
-	cfg.ErrorOutputPaths = []string{
-		"stderr",
-		logFile,
-	}
-
-	level := parseLogLevel(logLevel)
-	cfg.Level = zap.NewAtomicLevelAt(level)
-
-	logger, err := cfg.Build()
+	file, err := os.OpenFile(getLogFilePath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(fmt.Sprintf("failed to build logger: %v", err))
+		panic(fmt.Sprintf("failed to open log file: %v", err))
 	}
 
-	return logger
+	fileCore := zapcore.NewCore(
+		zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig()),
+		zapcore.AddSync(file),
+		level,
+	)
+
+	var stdoutEncoder zapcore.Encoder
+	if release {
+		stdoutEncoder = zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+	} else {
+		stdoutEncoder = zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
+	}
+	stdoutCore := zapcore.NewCore(stdoutEncoder, zapcore.AddSync(os.Stdout), level)
+
+	core := zapcore.NewTee(stdoutCore, fileCore)
+	return zap.New(core, zap.AddCaller())
 }
 
 func parseLogLevel(level string) zapcore.Level {

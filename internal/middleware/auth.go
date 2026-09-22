@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/sessions"
 
 	"go.uber.org/zap"

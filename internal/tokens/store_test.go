@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/tokens"
 
 	"github.com/alicebob/miniredis/v2"

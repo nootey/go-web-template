@@ -1,7 +1,7 @@
 package user
 
 import (
-	"go-web-template/internal/utils"
+	"go-web-template/internal/apperr"
 	"net/http"
 	"strconv"
 
@@ -10,11 +10,13 @@ import (
 
 type UserHandler struct {
 	service UserServiceInterface
+	resp    *apperr.Responder
 }
 
-func NewUserHandler(srv UserServiceInterface) *UserHandler {
+func NewUserHandler(srv UserServiceInterface, resp *apperr.Responder) *UserHandler {
 	return &UserHandler{
 		service: srv,
+		resp:    resp,
 	}
 }
 
@@ -30,9 +32,9 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.ListUsers(r.Context(), page, pageSize)
 	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, "failed to fetch users")
+		h.resp.Error(w, r, err)
 		return
 	}
 
-	utils.RespondJSON(w, http.StatusOK, result)
+	h.resp.JSON(w, http.StatusOK, result)
 }

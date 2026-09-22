@@ -1,6 +1,7 @@
 # Application
 run:
-	go run cmd/api/main.go
+	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) up -d
+	go run ./cmd/api
 
 mock:
 	mockery --config=.mockery.yaml
@@ -32,6 +33,29 @@ seed:
 
 seed-full:
 	go run cmd/seed/main.go full
+
+# Docker
+COMPOSE := -f ./docker-compose.yaml
+COMPOSE_OBS := -f ./docker-compose.observability.yaml
+COMPOSE_OBS_LOCAL := -f ./docker-compose.observability.local.yaml
+
+docker-up:
+	docker compose $(COMPOSE_OBS) $(COMPOSE) up -d --build
+
+docker-down:
+	docker compose $(COMPOSE_OBS) $(COMPOSE) down
+
+observability-up:
+	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) up -d
+
+observability-down:
+	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) down
+
+docker-migrate:
+	docker compose $(COMPOSE) run --rm --build migrate $(or $(type),up)
+
+docker-seed:
+	docker compose $(COMPOSE) run --rm --build --entrypoint seed migrate $(or $(type),core)
 
 # SQLC
 sqlc:

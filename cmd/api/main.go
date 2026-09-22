@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -21,13 +19,16 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/database"
 	"go-web-template/internal/mailer"
 	"go-web-template/internal/sessions"
 	"go-web-template/internal/store"
 	"go-web-template/internal/tokens"
+	"go-web-template/internal/worker"
 	"go-web-template/pkg/logging"
+	"go-web-template/pkg/telemetry"
 )
 
 type Handlers struct {
@@ -88,14 +89,27 @@ func main() {
 	tokenStore := tokens.NewStore(rdb, cfg.Token)
 	mail := mailer.NewMailer(cfg.Mailer, logger)
 
+	tel, err := telemetry.New()
+	if err != nil {
+		logger.Fatal("failed to initialize telemetry", zap.Error(err))
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tel.Shutdown(ctx); err != nil {
+			logger.Error("failed to shutdown telemetry", zap.Error(err))
+		}
+	}()
+
 	// Initialize services
 	userService := user.NewUserService(queries)
 	authService := auth.NewAuthService(queries, tokenStore, mail, cfg)
 	// Add more services as needed
 
 	// Initialize handlers
-	userHandler := user.NewUserHandler(userService)
-	authHandler := auth.NewAuthHandler(authService, authMiddleware, logger)
+	responder := apperr.NewResponder(logger)
+	userHandler := user.NewUserHandler(userService, responder)
+	authHandler := auth.NewAuthHandler(authService, authMiddleware, responder, logger)
 	// Add more handlers as needed
 
 	h := Handlers{
@@ -103,12 +117,29 @@ func main() {
 		User: userHandler,
 	}
 
-	r := setupRouter(cfg, &h, authMiddleware, logger)
+	r := setupRouter(cfg, &h, authMiddleware, tel, logger)
 
-	startServer(cfg, r, logger)
+	srv := &http.Server{
+		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
+		Handler:      r,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	supervisor := worker.NewSupervisor(logger)
+	supervisor.Register(&httpService{srv: srv, logger: logger, shutdownTimeout: 10 * time.Second})
+
+	if err := supervisor.Run(ctx); err != nil {
+		logger.Fatal("supervisor exited with error", zap.Error(err))
+	}
+	logger.Info("shutdown complete")
 }
 
-func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, tel *telemetry.Telemetry, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -136,6 +167,8 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 		}
 	})
 
+	r.Handle("/metrics", tel.MetricsHandler)
+
 	// API routes
 	r.Route("/api", func(r chi.Router) {
 		// Public routes
@@ -152,38 +185,4 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 
 	logger.Info("router configured")
 	return r
-}
-
-func startServer(cfg *config.Config, handler http.Handler, logger *zap.Logger) {
-	srv := &http.Server{
-		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
-		Handler:      handler,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	go func() {
-		logger.Info("server starting",
-			zap.String("address", srv.Addr),
-		)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatal("server failed to start", zap.Error(err))
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("server forced to shutdown", zap.Error(err))
-	}
-
-	logger.Info("server stopped gracefully")
 }

@@ -2,30 +2,34 @@ package auth
 
 import (
 	"encoding/json"
-	"errors"
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/middleware"
 	"go-web-template/internal/sessions"
-	"go-web-template/internal/utils"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
+var errInvalidBody = apperr.New(apperr.KindInvalid, "invalid request body")
+
 type AuthHandler struct {
 	service        AuthServiceInterface
 	authMiddleware middleware.AuthMiddlewareInterface
+	resp           *apperr.Responder
 	logger         *zap.Logger
 }
 
 func NewAuthHandler(
 	srv AuthServiceInterface,
 	authMiddleware middleware.AuthMiddlewareInterface,
+	resp *apperr.Responder,
 	logger *zap.Logger,
 ) *AuthHandler {
 	return &AuthHandler{
 		service:        srv,
 		authMiddleware: authMiddleware,
+		resp:           resp,
 		logger:         logger,
 	}
 }
@@ -56,29 +60,25 @@ func (h *AuthHandler) Routes() chi.Router {
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, errInvalidBody)
 		return
 	}
 
 	user, err := h.service.ValidateCredentials(r.Context(), req.Email, req.Password)
 	if err != nil {
-		if errors.Is(err, ErrEmailNotConfirmed) {
-			utils.RespondError(w, http.StatusForbidden, err.Error())
-			return
-		}
-		utils.RespondError(w, http.StatusUnauthorized, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
 	sessionID, maxAge, err := h.authMiddleware.CreateLoginSession(r.Context(), user.ID, req.RememberMe)
 	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
 	h.authMiddleware.SetSessionCookie(w, sessionID, maxAge)
 
-	utils.RespondJSON(w, http.StatusOK, MeResponse{
+	h.resp.JSON(w, http.StatusOK, MeResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
@@ -88,79 +88,79 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, errInvalidBody)
 		return
 	}
 
 	if req.Password != req.PasswordConfirmation {
-		utils.RespondError(w, http.StatusBadRequest, "passwords do not match")
+		h.resp.Error(w, r, apperr.New(apperr.KindInvalid, "passwords do not match"))
 		return
 	}
 
 	if err := h.service.Register(r.Context(), req.DisplayName, req.Email, req.Password); err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
 	// No auto-login: the account is unconfirmed until the emailed link is used.
-	utils.RespondSuccess(w, http.StatusCreated, "Registration successful. Please check your email to confirm your account.")
+	h.resp.Success(w, http.StatusCreated, "Registration successful. Please check your email to confirm your account.")
 }
 
 func (h *AuthHandler) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		utils.RespondError(w, http.StatusBadRequest, "missing token")
+		h.resp.Error(w, r, apperr.New(apperr.KindInvalid, "missing token"))
 		return
 	}
 
 	if err := h.service.ConfirmEmail(r.Context(), token); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, "invalid or expired token")
+		h.resp.Error(w, r, err)
 		return
 	}
 
-	utils.RespondSuccess(w, http.StatusOK, "Email confirmed. You can now log in.")
+	h.resp.Success(w, http.StatusOK, "Email confirmed. You can now log in.")
 }
 
 func (h *AuthHandler) ResendConfirmation(w http.ResponseWriter, r *http.Request) {
 	var req ConfirmResendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, errInvalidBody)
 		return
 	}
 
 	if err := h.service.ResendConfirmation(r.Context(), req.Email); err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
-	utils.RespondSuccess(w, http.StatusOK, "If the account exists and is unconfirmed, a confirmation email has been sent.")
+	h.resp.Success(w, http.StatusOK, "If the account exists and is unconfirmed, a confirmation email has been sent.")
 }
 
 func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
 	var req RequestResetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, errInvalidBody)
 		return
 	}
 
 	if err := h.service.RequestPasswordReset(r.Context(), req.Email); err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
-	utils.RespondSuccess(w, http.StatusOK, "If the account exists, a password reset email has been sent.")
+	h.resp.Success(w, http.StatusOK, "If the account exists, a password reset email has been sent.")
 }
 
 func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	var req ResetPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, errInvalidBody)
 		return
 	}
 
 	userID, err := h.service.ResetPassword(r.Context(), req.Token, req.Password, req.PasswordConfirmation)
 	if err != nil {
-		utils.RespondError(w, http.StatusBadRequest, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
@@ -169,23 +169,23 @@ func (h *AuthHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("failed to revoke sessions after password reset", zap.Error(err))
 	}
 
-	utils.RespondSuccess(w, http.StatusOK, "Password updated. Please log in with your new password.")
+	h.resp.Success(w, http.StatusOK, "Password updated. Please log in with your new password.")
 }
 
 func (h *AuthHandler) GetMe(w http.ResponseWriter, r *http.Request) {
 	userID, ok := middleware.GetUserID(r)
 	if !ok {
-		utils.RespondError(w, http.StatusUnauthorized, "unauthenticated")
+		h.resp.Error(w, r, apperr.New(apperr.KindUnauthorized, "unauthenticated"))
 		return
 	}
 
 	user, err := h.service.GetUserByID(r.Context(), userID)
 	if err != nil {
-		utils.RespondError(w, http.StatusInternalServerError, err.Error())
+		h.resp.Error(w, r, err)
 		return
 	}
 
-	utils.RespondJSON(w, http.StatusOK, MeResponse{
+	h.resp.JSON(w, http.StatusOK, MeResponse{
 		ID:          user.ID,
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
@@ -202,5 +202,5 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.authMiddleware.ClearSessionCookie(w)
-	utils.RespondSuccess(w, http.StatusOK, "Logged out successfully")
+	h.resp.Success(w, http.StatusOK, "Logged out successfully")
 }

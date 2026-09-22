@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/middleware"
 	"go-web-template/internal/sessions"
 

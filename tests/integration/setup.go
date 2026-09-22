@@ -19,7 +19,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/database"
 	"go-web-template/internal/store/seeders"
 )

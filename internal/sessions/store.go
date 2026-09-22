@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 
 	"github.com/redis/go-redis/v9"
 )
