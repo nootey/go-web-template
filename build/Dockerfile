@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
@@ -13,6 +13,7 @@ RUN go mod verify
 
 # Copy source code
 COPY cmd ./cmd
+COPY config ./config
 COPY internal ./internal
 COPY pkg ./pkg
 

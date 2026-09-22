@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"go-web-template/internal/apperr"
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/database"
 	"go-web-template/internal/domains/user"
 	"go-web-template/internal/mailer"

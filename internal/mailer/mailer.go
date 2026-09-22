@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html/template"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 
 	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"

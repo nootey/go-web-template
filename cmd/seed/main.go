@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/joho/godotenv/autoload"
 
-	"go-web-template/internal/config"
+	"go-web-template/config"
 	"go-web-template/internal/store"
 	"go-web-template/pkg/logging"
 

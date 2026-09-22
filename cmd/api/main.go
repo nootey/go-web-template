@@ -19,8 +19,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"go-web-template/config"
 	"go-web-template/internal/apperr"
-	"go-web-template/internal/config"
 	"go-web-template/internal/database"
 	"go-web-template/internal/mailer"
 	"go-web-template/internal/sessions"
@@ -104,13 +104,11 @@ func main() {
 		User: userHandler,
 	}
 
-	r := setupRouter(cfg, &h, authMiddleware, tel, logger)
-
-	handler := otelhttp.NewHandler(r, "http.server")
+	r := setupRouter(cfg, &h, authMiddleware, logger)
 
 	srv := &http.Server{
 		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
-		Handler:      handler,
+		Handler:      r,
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -128,7 +126,7 @@ func main() {
 	logger.Info("shutdown complete")
 }
 
-func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, tel *telemetry.Telemetry, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware

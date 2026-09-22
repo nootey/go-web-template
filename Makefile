@@ -1,6 +1,6 @@
 # Application
 run:
-	go run cmd/api/main.go
+	go run ./cmd/api
 
 mock:
 	mockery --config=.mockery.yaml
@@ -32,6 +32,21 @@ seed:
 
 seed-full:
 	go run cmd/seed/main.go full
+
+# Docker
+COMPOSE := -f ./docker-compose.yaml
+
+docker-up:
+	docker compose $(COMPOSE) up -d --build
+
+docker-down:
+	docker compose $(COMPOSE) down
+
+docker-migrate:
+	docker compose $(COMPOSE) run --rm --build migrate $(or $(type),up)
+
+docker-seed:
+	docker compose $(COMPOSE) run --rm --build --entrypoint seed migrate $(or $(type),core)
 
 # SQLC
 sqlc:
