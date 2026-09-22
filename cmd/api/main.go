@@ -28,6 +28,7 @@ import (
 	"go-web-template/internal/tokens"
 	"go-web-template/internal/worker"
 	"go-web-template/pkg/logging"
+	"go-web-template/pkg/telemetry"
 )
 
 type Handlers struct {
@@ -88,6 +89,18 @@ func main() {
 	tokenStore := tokens.NewStore(rdb, cfg.Token)
 	mail := mailer.NewMailer(cfg.Mailer, logger)
 
+	tel, err := telemetry.New()
+	if err != nil {
+		logger.Fatal("failed to initialize telemetry", zap.Error(err))
+	}
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := tel.Shutdown(ctx); err != nil {
+			logger.Error("failed to shutdown telemetry", zap.Error(err))
+		}
+	}()
+
 	// Initialize services
 	userService := user.NewUserService(queries)
 	authService := auth.NewAuthService(queries, tokenStore, mail, cfg)
@@ -104,7 +117,7 @@ func main() {
 		User: userHandler,
 	}
 
-	r := setupRouter(cfg, &h, authMiddleware, logger)
+	r := setupRouter(cfg, &h, authMiddleware, tel, logger)
 
 	srv := &http.Server{
 		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
@@ -126,7 +139,7 @@ func main() {
 	logger.Info("shutdown complete")
 }
 
-func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, tel *telemetry.Telemetry, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -153,6 +166,8 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 			logger.Fatal("failed to write health response", zap.Error(err))
 		}
 	})
+
+	r.Handle("/metrics", tel.MetricsHandler)
 
 	// API routes
 	r.Route("/api", func(r chi.Router) {

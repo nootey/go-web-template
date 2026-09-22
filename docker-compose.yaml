@@ -98,6 +98,8 @@ services:
       - DATABASE_NAME=${POSTGRES_DB:-go_template}
       - DATABASE_SSL_MODE=disable
       - REDIS_HOST=redis
+    volumes:
+      - ./logs:/app/logs
     labels:
       - traefik.enable=true
       - traefik.http.routers.api.rule=Host(`${HOST:-localhost}`) && PathPrefix(`/api`)
