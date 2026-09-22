@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -27,6 +25,7 @@ import (
 	"go-web-template/internal/sessions"
 	"go-web-template/internal/store"
 	"go-web-template/internal/tokens"
+	"go-web-template/internal/worker"
 	"go-web-template/pkg/logging"
 )
 
@@ -103,12 +102,31 @@ func main() {
 		User: userHandler,
 	}
 
-	r := setupRouter(cfg, &h, authMiddleware, logger)
+	r := setupRouter(cfg, &h, authMiddleware, tel, logger)
 
-	startServer(cfg, r, logger)
+	handler := otelhttp.NewHandler(r, "http.server")
+
+	srv := &http.Server{
+		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
+		Handler:      handler,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	supervisor := worker.NewSupervisor(logger)
+	supervisor.Register(&httpService{srv: srv, logger: logger, shutdownTimeout: 10 * time.Second})
+
+	if err := supervisor.Run(ctx); err != nil {
+		logger.Fatal("supervisor exited with error", zap.Error(err))
+	}
+	logger.Info("shutdown complete")
 }
 
-func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, logger *zap.Logger) *chi.Mux {
+func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMiddleware, tel *telemetry.Telemetry, logger *zap.Logger) *chi.Mux {
 	r := chi.NewRouter()
 
 	// Middleware
@@ -152,38 +170,4 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 
 	logger.Info("router configured")
 	return r
-}
-
-func startServer(cfg *config.Config, handler http.Handler, logger *zap.Logger) {
-	srv := &http.Server{
-		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
-		Handler:      handler,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-
-	go func() {
-		logger.Info("server starting",
-			zap.String("address", srv.Addr),
-		)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatal("server failed to start", zap.Error(err))
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info("shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Fatal("server forced to shutdown", zap.Error(err))
-	}
-
-	logger.Info("server stopped gracefully")
 }
