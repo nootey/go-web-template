@@ -7,12 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
 	"go-web-template/mocks"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
@@ -33,7 +33,7 @@ func TestAuthHandlerTestSuite(t *testing.T) {
 func (suite *AuthHandlerTestSuite) SetupTest() {
 	suite.mockService = mocks.NewMockAuthServiceInterface(suite.T())
 	suite.mockMiddleware = mocks.NewMockAuthMiddlewareInterface(suite.T())
-	suite.handler = auth.NewAuthHandler(suite.mockService, suite.mockMiddleware, zap.NewNop())
+	suite.handler = auth.NewAuthHandler(suite.mockService, suite.mockMiddleware, apperr.NewResponder(zap.NewNop()), zap.NewNop())
 
 	// chi invokes this at mount time for the protected group; stub as passthrough.
 	suite.mockMiddleware.EXPECT().
@@ -139,7 +139,7 @@ func (suite *AuthHandlerTestSuite) TestConfirmEmail_MissingToken() {
 func (suite *AuthHandlerTestSuite) TestConfirmEmail_InvalidToken() {
 	suite.mockService.EXPECT().
 		ConfirmEmail(mock.Anything, "bad").
-		Return(assert.AnError).
+		Return(apperr.New(apperr.KindInvalid, "invalid or expired token")).
 		Once()
 
 	w := suite.do(http.MethodGet, "/auth/confirm-email?token=bad", nil)
@@ -188,7 +188,7 @@ func (suite *AuthHandlerTestSuite) TestResetPassword_Success() {
 func (suite *AuthHandlerTestSuite) TestResetPassword_InvalidToken() {
 	suite.mockService.EXPECT().
 		ResetPassword(mock.Anything, "bad", "newsecret1", "newsecret1").
-		Return(int64(0), assert.AnError).
+		Return(int64(0), apperr.New(apperr.KindInvalid, "invalid or expired token")).
 		Once()
 
 	w := suite.do(http.MethodPost, "/auth/reset-password", auth.ResetPasswordRequest{

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
 	"go-web-template/internal/domains/user"
@@ -16,8 +17,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// ErrEmailNotConfirmed means the credentials are valid but the email is unconfirmed.
-var ErrEmailNotConfirmed = errors.New("please confirm your email address before logging in")
+var (
+	ErrEmailNotConfirmed  = apperr.New(apperr.KindForbidden, "please confirm your email address before logging in")
+	errInvalidCredentials = apperr.New(apperr.KindUnauthorized, "invalid credentials")
+)
 
 type AuthServiceInterface interface {
 	ValidateCredentials(ctx context.Context, email, password string) (*user.User, error)
@@ -57,13 +60,13 @@ func (s *AuthService) ValidateCredentials(ctx context.Context, email, password s
 	dbUser, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("invalid credentials")
+			return nil, errInvalidCredentials
 		}
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(password)); err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errInvalidCredentials
 	}
 
 	// Checked after the password so an attacker can't probe which emails exist.
@@ -116,7 +119,7 @@ func (s *AuthService) GetUserByID(ctx context.Context, userID int64) (*user.User
 	dbUser, err := s.queries.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("user not found")
+			return nil, apperr.New(apperr.KindNotFound, "user not found")
 		}
 		return nil, err
 	}
@@ -131,8 +134,6 @@ func (s *AuthService) GetUserByID(ctx context.Context, userID int64) (*user.User
 	}, nil
 }
 
-// Register creates an unconfirmed user and emails a confirmation link. No session
-// is created: the user must confirm before logging in.
 func (s *AuthService) Register(ctx context.Context, displayName, email, password string) error {
 	if err := validatePasswordStrength(password); err != nil {
 		return err
@@ -149,12 +150,14 @@ func (s *AuthService) Register(ctx context.Context, displayName, email, password
 func (s *AuthService) ConfirmEmail(ctx context.Context, tokenID string) error {
 	userID, err := s.tokens.Consume(ctx, tokens.PurposeConfirm, tokenID)
 	if err != nil {
+		if errors.Is(err, tokens.ErrNotFound) {
+			return apperr.New(apperr.KindInvalid, "invalid or expired token")
+		}
 		return err
 	}
 	return s.queries.ConfirmUserEmail(ctx, userID)
 }
 
-// ResendConfirmation swallows not-found/already-confirmed so the handler can stay generic.
 func (s *AuthService) ResendConfirmation(ctx context.Context, email string) error {
 	dbUser, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -169,7 +172,6 @@ func (s *AuthService) ResendConfirmation(ctx context.Context, email string) erro
 	return s.issueConfirmation(ctx, dbUser.ID, dbUser.Email, dbUser.DisplayName)
 }
 
-// RequestPasswordReset swallows not-found so the handler can stay generic.
 func (s *AuthService) RequestPasswordReset(ctx context.Context, email string) error {
 	dbUser, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -189,10 +191,9 @@ func (s *AuthService) RequestPasswordReset(ctx context.Context, email string) er
 	return s.mailer.SendPasswordResetEmail(dbUser.Email, dbUser.DisplayName, link)
 }
 
-// ResetPassword returns the user id so the caller can revoke that user's sessions.
 func (s *AuthService) ResetPassword(ctx context.Context, tokenID, password, confirmation string) (int64, error) {
 	if password != confirmation {
-		return 0, errors.New("passwords do not match")
+		return 0, apperr.New(apperr.KindInvalid, "passwords do not match")
 	}
 	if err := validatePasswordStrength(password); err != nil {
 		return 0, err
@@ -200,6 +201,9 @@ func (s *AuthService) ResetPassword(ctx context.Context, tokenID, password, conf
 
 	userID, err := s.tokens.Consume(ctx, tokens.PurposeReset, tokenID)
 	if err != nil {
+		if errors.Is(err, tokens.ErrNotFound) {
+			return 0, apperr.New(apperr.KindInvalid, "invalid or expired token")
+		}
 		return 0, err
 	}
 
@@ -231,7 +235,7 @@ func (s *AuthService) issueConfirmation(ctx context.Context, userID int64, email
 
 func validatePasswordStrength(pw string) error {
 	if len(pw) < 8 {
-		return errors.New("password must be at least 8 characters")
+		return apperr.New(apperr.KindValidation, "password must be at least 8 characters")
 	}
 	return nil
 }

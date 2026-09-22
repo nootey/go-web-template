@@ -2,8 +2,8 @@ package user_test
 
 import (
 	"encoding/json"
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/user"
-	"go-web-template/internal/utils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
 )
 
 type UserHandlerTestSuite struct {
@@ -25,7 +26,7 @@ type UserHandlerTestSuite struct {
 
 func (suite *UserHandlerTestSuite) SetupTest() {
 	suite.mockService = mocks.NewMockUserServiceInterface(suite.T())
-	suite.handler = user.NewUserHandler(suite.mockService)
+	suite.handler = user.NewUserHandler(suite.mockService, apperr.NewResponder(zap.NewNop()))
 
 	// Setup router
 	suite.router = chi.NewRouter()
@@ -123,10 +124,10 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 
 	suite.Equal(http.StatusInternalServerError, w.Code)
 
-	var response utils.ErrorResponse
+	var response apperr.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.NoError(err)
-	suite.Equal("failed to fetch users", response.Message)
+	suite.Equal("something went wrong", response.Message)
 }
 
 // Test default pagination values

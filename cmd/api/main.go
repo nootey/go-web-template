@@ -19,6 +19,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/config"
 	"go-web-template/internal/database"
 	"go-web-template/internal/mailer"
@@ -93,8 +94,9 @@ func main() {
 	// Add more services as needed
 
 	// Initialize handlers
-	userHandler := user.NewUserHandler(userService)
-	authHandler := auth.NewAuthHandler(authService, authMiddleware, logger)
+	responder := apperr.NewResponder(logger)
+	userHandler := user.NewUserHandler(userService, responder)
+	authHandler := auth.NewAuthHandler(authService, authMiddleware, responder, logger)
 	// Add more handlers as needed
 
 	h := Handlers{
