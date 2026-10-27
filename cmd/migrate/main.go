@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"go-web-template/config"
 	"go-web-template/pkg/logging"
-	"log"
 	"os"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"go.uber.org/zap"
-
-	"go-web-template/config"
 )
 
 func main() {
@@ -47,8 +47,11 @@ func main() {
 		}
 	}(db)
 
-	if err := db.Ping(); err != nil {
-		log.Fatal("failed to ping database:", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		logger.Fatal("failed to ping database", zap.Error(err))
 	}
 
 	if err := goose.SetDialect("postgres"); err != nil {
@@ -57,7 +60,7 @@ func main() {
 
 	args := os.Args[1:]
 	if len(args) == 0 {
-		os.Exit(1)
+		logger.Fatal("migration command required: up, down, status, create or reset")
 	}
 
 	command := args[0]
@@ -68,13 +71,13 @@ func main() {
 		if err := goose.Up(db, "migrations"); err != nil {
 			logger.Fatal("migration up failed:", zap.Error(err))
 		}
-		fmt.Println("Migrations applied successfully")
+		logger.Info("migrations applied successfully")
 
 	case "down":
 		if err := goose.Down(db, "migrations"); err != nil {
 			logger.Fatal("migration down failed:", zap.Error(err))
 		}
-		fmt.Println("Migration rolled back")
+		logger.Info("migration rolled back")
 
 	case "status":
 		if err := goose.Status(db, "migrations"); err != nil {
@@ -88,16 +91,15 @@ func main() {
 		if err := goose.Create(db, "migrations", commandArgs[0], "sql"); err != nil {
 			logger.Fatal("migration create failed:", zap.Error(err))
 		}
-		fmt.Printf("Created migration: %s\n", commandArgs[0])
+		logger.Info("created migration", zap.String("name", commandArgs[0]))
 
 	case "reset":
 		if err := goose.Reset(db, "migrations"); err != nil {
 			logger.Fatal("migration reset failed:", zap.Error(err))
 		}
-		fmt.Println("All migrations rolled back")
+		logger.Info("all migrations rolled back")
 
 	default:
-		logger.Error("migration command not recognized", zap.String("command", command))
-		os.Exit(1)
+		logger.Fatal("migration command not recognized", zap.String("command", command))
 	}
 }

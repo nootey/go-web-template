@@ -3,14 +3,13 @@ package auth_test
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
 	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
 	"go-web-template/mocks"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/mock"

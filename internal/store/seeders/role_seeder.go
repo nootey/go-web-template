@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
 	"go-web-template/internal/database"
 
 	"go.uber.org/zap"
@@ -90,10 +89,11 @@ func SeedRolesAndPermissions(ctx context.Context, q *database.Queries, logger *z
 		existing, err := q.GetRoleByName(ctx, r.name)
 		var roleID int64
 
-		if err == nil {
+		switch {
+		case err == nil:
 			roleID = existing.ID
 			logger.Debug("role already exists", zap.String("name", r.name))
-		} else if errors.Is(err, sql.ErrNoRows) {
+		case errors.Is(err, sql.ErrNoRows):
 			desc := sql.NullString{String: r.description, Valid: true}
 			created, err := q.CreateRole(ctx, database.CreateRoleParams{
 				Name:        r.name,
@@ -105,7 +105,7 @@ func SeedRolesAndPermissions(ctx context.Context, q *database.Queries, logger *z
 			}
 			roleID = created.ID
 			logger.Info("created role", zap.String("name", r.name))
-		} else {
+		default:
 			return err
 		}
 

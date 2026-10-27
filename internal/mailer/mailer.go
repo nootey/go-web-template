@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"html/template"
-
 	"go-web-template/config"
+	"html/template"
 
 	"go.uber.org/zap"
 	"gopkg.in/gomail.v2"

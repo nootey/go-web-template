@@ -6,10 +6,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"go-web-template/config"
 	"strconv"
 	"time"
-
-	"go-web-template/config"
 
 	"github.com/redis/go-redis/v9"
 )

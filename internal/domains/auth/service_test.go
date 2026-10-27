@@ -4,11 +4,10 @@ package auth_test
 
 import (
 	"context"
-	"net/url"
-	"testing"
-
 	"go-web-template/internal/domains/auth"
 	"go-web-template/tests/integration"
+	"net/url"
+	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -120,7 +119,7 @@ func (s *AuthServiceTestSuite) TestResetPassword_ChangesPasswordAndReturnsUserID
 
 	// Old password no longer works, new one does.
 	_, err = svc.ValidateCredentials(ctx, "jane@example.com", "oldsecret1")
-	s.Error(err)
+	s.Require().Error(err)
 
 	u, err := svc.ValidateCredentials(ctx, "jane@example.com", "newsecret1")
 	s.Require().NoError(err)
@@ -138,15 +137,15 @@ func (s *AuthServiceTestSuite) TestResetPassword_Rejections() {
 
 	// Mismatched confirmation is rejected without consuming the token.
 	_, err := svc.ResetPassword(ctx, resetToken, "newsecret1", "different1")
-	s.Error(err)
+	s.Require().Error(err)
 
 	// Too-weak password is rejected.
 	_, err = svc.ResetPassword(ctx, resetToken, "short", "short")
-	s.Error(err)
+	s.Require().Error(err)
 
 	// Unknown token is rejected.
 	_, err = svc.ResetPassword(ctx, "bogus-token", "newsecret1", "newsecret1")
-	s.Error(err)
+	s.Require().Error(err)
 }
 
 func (s *AuthServiceTestSuite) TestValidateCredentials_WrongPassword() {
@@ -157,6 +156,6 @@ func (s *AuthServiceTestSuite) TestValidateCredentials_WrongPassword() {
 	s.Require().NoError(svc.ConfirmEmail(ctx, s.tokenFrom(s.TC.Mailer.ConfirmationLink)))
 
 	_, err := svc.ValidateCredentials(ctx, "jane@example.com", "wrongpassword")
-	s.Error(err)
+	s.Require().Error(err)
 	s.Equal("invalid credentials", err.Error())
 }

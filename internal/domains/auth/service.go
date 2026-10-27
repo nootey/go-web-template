@@ -4,15 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
-
-	"go-web-template/internal/apperr"
 	"go-web-template/config"
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/database"
 	"go-web-template/internal/domains/user"
 	"go-web-template/internal/mailer"
 	"go-web-template/internal/tokens"
 	"go-web-template/internal/utils"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )

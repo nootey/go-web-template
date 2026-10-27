@@ -12,7 +12,6 @@ import (
 )
 
 func SeedRootUser(ctx context.Context, q *database.Queries, logger *zap.Logger, cfg *config.Config) error {
-
 	logger.Info("seeding root user")
 
 	// Check if root user already exists

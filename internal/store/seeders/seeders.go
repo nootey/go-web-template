@@ -3,9 +3,8 @@ package seeders
 import (
 	"context"
 	"database/sql"
-	"go-web-template/internal/database"
-
 	"go-web-template/config"
+	"go-web-template/internal/database"
 
 	"go.uber.org/zap"
 )

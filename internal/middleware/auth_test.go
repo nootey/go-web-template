@@ -2,14 +2,13 @@ package middleware_test
 
 import (
 	"encoding/json"
+	"go-web-template/config"
+	"go-web-template/internal/middleware"
+	"go-web-template/internal/sessions"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"go-web-template/config"
-	"go-web-template/internal/middleware"
-	"go-web-template/internal/sessions"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"

@@ -3,8 +3,18 @@ package main
 import (
 	"context"
 	"database/sql"
+	"go-web-template/config"
+	"go-web-template/internal/apperr"
+	"go-web-template/internal/database"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
+	"go-web-template/internal/mailer"
+	"go-web-template/internal/sessions"
+	"go-web-template/internal/store"
+	"go-web-template/internal/tokens"
+	"go-web-template/internal/worker"
+	"go-web-template/pkg/logging"
+	"go-web-template/pkg/telemetry"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -18,17 +28,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-
-	"go-web-template/config"
-	"go-web-template/internal/apperr"
-	"go-web-template/internal/database"
-	"go-web-template/internal/mailer"
-	"go-web-template/internal/sessions"
-	"go-web-template/internal/store"
-	"go-web-template/internal/tokens"
-	"go-web-template/internal/worker"
-	"go-web-template/pkg/logging"
-	"go-web-template/pkg/telemetry"
 )
 
 type Handlers struct {
@@ -37,7 +36,6 @@ type Handlers struct {
 }
 
 func main() {
-
 	if err := config.Load(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}

@@ -13,7 +13,7 @@ import (
 func InitLogger(release bool, logLevel string) *zap.Logger {
 	level := zap.NewAtomicLevelAt(parseLogLevel(logLevel))
 
-	file, err := os.OpenFile(getLogFilePath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(getLogFilePath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) //nolint:gosec // Alloy reads this file from another container
 	if err != nil {
 		panic(fmt.Sprintf("failed to open log file: %v", err))
 	}
@@ -56,7 +56,7 @@ func parseLogLevel(level string) zapcore.Level {
 func getLogFilePath() string {
 	const logDir = "logs"
 
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0o755); err != nil { //nolint:gosec // Alloy reads this folder from another container
 		panic(fmt.Sprintf("failed to create log directory: %v", err))
 	}
 

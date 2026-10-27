@@ -2,3 +2,46 @@ version: "2"
 run:
   build-tags:
     - integration
+linters:
+  enable:
+    - bidichk
+    - canonicalheader
+    - copyloopvar
+    - depguard
+    - errname
+    - forbidigo
+    - gocritic
+    - gosec
+    - intrange
+    - misspell
+    - noctx
+    - perfsprint
+    - predeclared
+    - spancheck
+    - testifylint
+    - thelper
+    - unconvert
+    - unparam
+    - wastedassign
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "io/ioutil"
+              desc: "use io or os instead"
+    gocritic:
+      disabled-checks:
+        - captLocal
+  exclusions:
+    generated: lax
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - noctx
+          - unparam
+formatters:
+  enable:
+    - gofumpt
+    - goimports
