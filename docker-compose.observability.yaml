@@ -4,15 +4,21 @@ services:
     restart: unless-stopped
     volumes:
       - ./config/docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/docker/prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
     networks:
       - app_network
 
   loki:
     image: grafana/loki:latest
     restart: unless-stopped
-    command: ["-config.file=/etc/loki/local-config.yaml"]
+    command: ["-config.file=/etc/loki/loki.yaml"]
     volumes:
+      - ./config/docker/loki/loki.yaml:/etc/loki/loki.yaml:ro
       - loki_data:/loki
     networks:
       - app_network
@@ -24,9 +30,11 @@ services:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
       - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
     volumes:
       - ./config/docker/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - ./logs:/var/log/app:ro
+      - alloy_data:/var/lib/alloy/data
     depends_on:
       - loki
     networks:
@@ -56,6 +64,7 @@ services:
 volumes:
   prometheus_data:
   loki_data:
+  alloy_data:
   grafana_data:
 
 networks:

@@ -1,0 +1,20 @@
+groups:
+  - name: api-health
+    rules:
+      # A stopped server stops reporting health_check_up, so HealthCheckFailing alone stays silent
+      - alert: ServerDown
+        expr: up{job="api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Prometheus cannot scrape the server.
+          description: "{{ $labels.instance }} has not answered on /metrics for 2 minutes."
+      - alert: HealthCheckFailing
+        expr: health_check_up{job="api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: A health check of the server fails.
+          description: "The {{ $labels.check }} check has failed for 2 minutes."
