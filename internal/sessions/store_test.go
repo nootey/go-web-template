@@ -2,11 +2,10 @@ package sessions_test
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"go-web-template/config"
 	"go-web-template/internal/sessions"
+	"testing"
+	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
@@ -118,9 +117,9 @@ func (suite *StoreTestSuite) TestDeleteAllForUser() {
 	suite.Require().NoError(suite.store.DeleteAllForUser(suite.ctx, 42))
 
 	_, err = suite.store.Validate(suite.ctx, first)
-	suite.ErrorIs(err, sessions.ErrNotFound)
+	suite.Require().ErrorIs(err, sessions.ErrNotFound)
 	_, err = suite.store.Validate(suite.ctx, second)
-	suite.ErrorIs(err, sessions.ErrNotFound)
+	suite.Require().ErrorIs(err, sessions.ErrNotFound)
 
 	// Another user's session is untouched.
 	userID, err := suite.store.Validate(suite.ctx, other)

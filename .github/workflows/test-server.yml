@@ -4,7 +4,7 @@ on:
   push:
     paths-ignore:
       - 'docs/**'
-      - 'deployments/**'
+      - 'config/docker/**'
       - '*.md'
       - 'client/**'
     branches:
@@ -16,7 +16,7 @@ on:
   pull_request:
     paths-ignore:
       - 'docs/**'
-      - 'deployments/**'
+      - 'config/docker/**'
       - '*.md'
       - 'client/**'
     branches:
@@ -25,8 +25,8 @@ on:
     types: [ opened, synchronize, reopened ]
 
 jobs:
-  test:
-    name: Run tests
+  unit:
+    name: Unit tests
     runs-on: ubuntu-latest
 
     steps:
@@ -40,7 +40,7 @@ jobs:
           cache: true
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cache/go-build
@@ -52,12 +52,71 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
-      - name: Run tests with coverage
-        run: |
-          make test-coverage
+      - name: Run unit tests with coverage
+        run: make test-unit cover=coverage.out
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: coverage.out
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Check integration test names
+        run: make check-test-names
+
+      - name: Run integration tests with coverage
+        run: make test-integration cover=coverage.out
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integration
+          path: coverage.out
+
+  coverage:
+    name: Merge code coverage
+    runs-on: ubuntu-latest
+    needs: [ unit, integration ]
+
+    steps:
+      - name: Download coverage results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+
+      - name: Merge coverage profiles
+        run: |
+          { head -n 1 coverage-unit/coverage.out; tail -q -n +2 coverage-unit/coverage.out coverage-integration/coverage.out; } > coverage.out
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v7
         with:
           name: code-coverage
           path: coverage.out
@@ -66,11 +125,11 @@ jobs:
     name: "Code coverage report"
     if: github.event_name == 'pull_request' # Do not run when workflow is triggered by push to main branch
     runs-on: ubuntu-latest
-    needs: test
+    needs: coverage
     continue-on-error: true # not critical
     permissions:
       contents: read
-      actions: read  # to download code coverage results from "test" job
+      actions: read  # to download code coverage results from "coverage" job
       pull-requests: write # write permission needed to comment on PR
     steps:
       - uses: actions/checkout@v6

@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/user"
+	"go-web-template/mocks"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"go-web-template/mocks"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
@@ -76,7 +75,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_Success() {
 
 	var response user.PaginatedUsers
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	suite.Len(response.Data, 2)
 	suite.Equal(2, response.Total)
 }
@@ -105,7 +104,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_WithPagination() {
 
 	var response user.PaginatedUsers
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	suite.Equal(2, response.Page)
 	suite.Equal(5, response.PageSize)
 }
@@ -126,7 +125,7 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 
 	var response apperr.ErrorResponse
 	err := json.Unmarshal(w.Body.Bytes(), &response)
-	suite.NoError(err)
+	suite.Require().NoError(err)
 	suite.Equal("something went wrong", response.Message)
 }
 

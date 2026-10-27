@@ -3,10 +3,9 @@ package middleware
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-
 	"go-web-template/config"
 	"go-web-template/internal/sessions"
+	"net/http"
 
 	"go.uber.org/zap"
 )
@@ -80,7 +79,7 @@ func (m *AuthMiddleware) RevokeAllSessions(ctx context.Context, userID int64) er
 }
 
 func (m *AuthMiddleware) SetSessionCookie(w http.ResponseWriter, id string, maxAge int) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is off outside production so local dev works over http
 		Name:     sessions.CookieName,
 		Value:    id,
 		Path:     "/",
@@ -93,7 +92,7 @@ func (m *AuthMiddleware) SetSessionCookie(w http.ResponseWriter, id string, maxA
 }
 
 func (m *AuthMiddleware) ClearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, &http.Cookie{ //nolint:gosec // Secure is off outside production so local dev works over http
 		Name:     sessions.CookieName,
 		Value:    "",
 		Path:     "/",

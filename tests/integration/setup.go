@@ -3,8 +3,11 @@ package integration
 import (
 	"context"
 	"database/sql"
+	"go-web-template/config"
+	"go-web-template/internal/database"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
+	"go-web-template/internal/store/seeders"
 	"go-web-template/internal/tokens"
 	"path/filepath"
 	"time"
@@ -18,10 +21,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
-
-	"go-web-template/config"
-	"go-web-template/internal/database"
-	"go-web-template/internal/store/seeders"
 )
 
 type TestContainer struct {
@@ -141,7 +140,7 @@ func testConfig() *config.Config {
 
 func (s *ServiceIntegrationSuite) SetupTest() {
 	// Truncate users between tests (keep roles)
-	_, err := s.TC.DB.Exec(`TRUNCATE TABLE users RESTART IDENTITY CASCADE`)
+	_, err := s.TC.DB.ExecContext(s.Ctx, `TRUNCATE TABLE users RESTART IDENTITY CASCADE`)
 	s.Require().NoError(err, "failed to truncate users table")
 
 	// Clear tokens/sessions and the captured mail between tests.

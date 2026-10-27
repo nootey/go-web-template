@@ -1,10 +1,9 @@
 package utils_test
 
 import (
-	"testing"
-
 	"go-web-template/config"
 	"go-web-template/internal/utils"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

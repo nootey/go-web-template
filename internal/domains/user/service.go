@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"go-web-template/internal/database"
+	"math"
 )
 
 type UserServiceInterface interface {
@@ -42,18 +43,17 @@ func toUserModel(dbUser database.User) *User {
 }
 
 func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*PaginatedUsers, error) {
-	if page < 1 {
-		page = 1
-	}
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
+	// Cap page so the offset still fits in int32
+	page = min(max(page, 1), math.MaxInt32/pageSize)
 
 	offset := (page - 1) * pageSize
 
 	dbUsers, err := s.queries.ListUsersPaginated(ctx, database.ListUsersPaginatedParams{
 		Limit:  int32(pageSize),
-		Offset: int32(offset),
+		Offset: int32(offset), //nolint:gosec // page is capped above so the offset fits
 	})
 	if err != nil {
 		return nil, err

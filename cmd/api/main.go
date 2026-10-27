@@ -3,8 +3,19 @@ package main
 import (
 	"context"
 	"database/sql"
+	"go-web-template/config"
+	"go-web-template/internal/apperr"
+	"go-web-template/internal/database"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/internal/domains/user"
+	"go-web-template/internal/health"
+	"go-web-template/internal/mailer"
+	"go-web-template/internal/sessions"
+	"go-web-template/internal/store"
+	"go-web-template/internal/tokens"
+	"go-web-template/internal/worker"
+	"go-web-template/pkg/logging"
+	"go-web-template/pkg/telemetry"
 	"net/http"
 	"os/signal"
 	"syscall"
@@ -18,26 +29,15 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
-
-	"go-web-template/config"
-	"go-web-template/internal/apperr"
-	"go-web-template/internal/database"
-	"go-web-template/internal/mailer"
-	"go-web-template/internal/sessions"
-	"go-web-template/internal/store"
-	"go-web-template/internal/tokens"
-	"go-web-template/internal/worker"
-	"go-web-template/pkg/logging"
-	"go-web-template/pkg/telemetry"
 )
 
 type Handlers struct {
-	Auth *auth.AuthHandler
-	User *user.UserHandler
+	Auth   *auth.AuthHandler
+	User   *user.UserHandler
+	Health *health.HealthHandler
 }
 
 func main() {
-
 	if err := config.Load(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}
@@ -101,6 +101,13 @@ func main() {
 		}
 	}()
 
+	healthSvc, err := health.New(logger.Named("health"))
+	if err != nil {
+		logger.Fatal("failed to initialize health checks", zap.Error(err))
+	}
+	healthSvc.Add(health.NewDBChecker(db))
+	healthSvc.Add(health.NewRedisChecker(rdb))
+
 	// Initialize services
 	userService := user.NewUserService(queries)
 	authService := auth.NewAuthService(queries, tokenStore, mail, cfg)
@@ -110,11 +117,13 @@ func main() {
 	responder := apperr.NewResponder(logger)
 	userHandler := user.NewUserHandler(userService, responder)
 	authHandler := auth.NewAuthHandler(authService, authMiddleware, responder, logger)
+	healthHandler := health.NewHealthHandler(healthSvc, responder)
 	// Add more handlers as needed
 
 	h := Handlers{
-		Auth: authHandler,
-		User: userHandler,
+		Auth:   authHandler,
+		User:   userHandler,
+		Health: healthHandler,
 	}
 
 	r := setupRouter(cfg, &h, authMiddleware, tel, logger)
@@ -132,6 +141,7 @@ func main() {
 
 	supervisor := worker.NewSupervisor(logger)
 	supervisor.Register(&httpService{srv: srv, logger: logger, shutdownTimeout: 10 * time.Second})
+	supervisor.Register(healthSvc)
 
 	if err := supervisor.Run(ctx); err != nil {
 		logger.Fatal("supervisor exited with error", zap.Error(err))
@@ -143,6 +153,7 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 	r := chi.NewRouter()
 
 	// Middleware
+	r.Use(tel.HTTPMiddleware())
 	r.Use(middleware.RequestID)
 	r.Use(middleware.ClientIPFromRemoteAddr)
 	r.Use(middleware.Logger)
@@ -159,13 +170,7 @@ func setupRouter(cfg *config.Config, h *Handlers, authMiddleware *mWare.AuthMidd
 		MaxAge:           300,
 	}))
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte("OK"))
-		if err != nil {
-			logger.Fatal("failed to write health response", zap.Error(err))
-		}
-	})
+	r.Get("/health", h.Health.Report)
 
 	r.Handle("/metrics", tel.MetricsHandler)
 

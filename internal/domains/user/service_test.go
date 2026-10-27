@@ -1,3 +1,5 @@
+//go:build integration
+
 package user_test
 
 import (
@@ -14,7 +16,7 @@ type UserServiceTestSuite struct {
 	integration.ServiceIntegrationSuite
 }
 
-func TestUserServiceTestSuite(t *testing.T) {
+func TestIntegrationUserServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(UserServiceTestSuite))
 }
 
@@ -27,8 +29,8 @@ func (s *UserServiceTestSuite) TestListUsers() {
 	result, err := svc.ListUsers(context.Background(), 1, 10)
 
 	s.Require().NoError(err)
-	s.Assert().Len(result.Data, 2)
-	s.Assert().Equal(2, result.Total)
+	s.Len(result.Data, 2)
+	s.Equal(2, result.Total)
 }
 
 func (s *UserServiceTestSuite) TestListUsers_Pagination() {
@@ -41,9 +43,9 @@ func (s *UserServiceTestSuite) TestListUsers_Pagination() {
 	result, err := svc.ListUsers(context.Background(), 1, 2)
 
 	s.Require().NoError(err)
-	s.Assert().Len(result.Data, 2)
-	s.Assert().Equal(5, result.Total)
-	s.Assert().Equal(3, result.TotalPages)
+	s.Len(result.Data, 2)
+	s.Equal(5, result.Total)
+	s.Equal(3, result.TotalPages)
 }
 
 func (s *UserServiceTestSuite) seedUser(email, displayName string) {

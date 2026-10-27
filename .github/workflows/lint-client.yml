@@ -6,7 +6,7 @@ on:
       - 'client/**'
     branches:
       - main
-      - development
+      - develop
   pull_request:
     paths:
       - 'client/**'

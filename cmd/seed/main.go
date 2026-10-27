@@ -3,21 +3,19 @@ package main
 import (
 	"context"
 	"database/sql"
+	"go-web-template/config"
+	"go-web-template/internal/store"
 	"go-web-template/internal/store/seeders"
+	"go-web-template/pkg/logging"
 	"os"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 
-	"go-web-template/config"
-	"go-web-template/internal/store"
-	"go-web-template/pkg/logging"
-
 	"go.uber.org/zap"
 )
 
 func main() {
-
 	if err := config.Load(); err != nil {
 		panic("failed to load config: " + err.Error())
 	}
