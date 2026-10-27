@@ -63,10 +63,21 @@ sqlc:
 
 # Tests
 test:
-	go test -race -count=1 ./...
+	go test -race -count=1 -tags integration ./...
+
+# cover=<file> writes a coverage profile
+test-unit:
+	go test -race -count=1 $(if $(cover),-coverpkg=./... -coverprofile=$(cover)) ./...
+
+test-integration:
+	go test -race -count=1 -tags integration -run '^TestIntegration' $(if $(cover),-coverpkg=./... -coverprofile=$(cover)) ./...
+
+check-test-names:
+	@bad=$$(git grep -l '^//go:build integration' -- '*_test.go' | xargs -r grep -HnE '^func Test' | grep -vE ':func Test(Integration|Main\()'); \
+	if [ -n "$$bad" ]; then echo "$$bad"; echo "tests in integration-tagged files must start with TestIntegration"; exit 1; fi
 
 test-coverage:
-	go test -race -coverprofile=coverage.out ./...
+	go test -race -tags integration -coverpkg=./... -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
@@ -89,7 +100,7 @@ pre-push:
 	@echo "--- App ---"
 	@go build ./... && echo "build successful" || (echo "build failed" && exit 1)
 	@golangci-lint run && echo "lint successful" || (echo "lint failed" && exit 1)
-	@go test -race -count=1 ./... && echo "tests successful" || (echo "tests failed" && exit 1)
+	@go test -race -count=1 -tags integration ./... && echo "tests successful" || (echo "tests failed" && exit 1)
 	@echo ""
 	@echo "--- Client ---"
 	@cd client && pnpm run build && echo "build successful" || (echo "build failed" && exit 1)

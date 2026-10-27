@@ -1,3 +1,5 @@
+//go:build integration
+
 package auth_test
 
 import (
@@ -15,7 +17,7 @@ type AuthServiceTestSuite struct {
 	integration.ServiceIntegrationSuite
 }
 
-func TestAuthServiceTestSuite(t *testing.T) {
+func TestIntegrationAuthServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(AuthServiceTestSuite))
 }
 
