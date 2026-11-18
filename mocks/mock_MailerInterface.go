@@ -14,10 +14,19 @@ func NewMockMailerInterface(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockMailerInterface {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockMailerInterface{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -61,7 +70,7 @@ type MockMailerInterface_SendConfirmationEmail_Call struct {
 //   - to string
 //   - name string
 //   - link string
-func (_e *MockMailerInterface_Expecter) SendConfirmationEmail(to interface{}, name interface{}, link interface{}) *MockMailerInterface_SendConfirmationEmail_Call {
+func (_e *MockMailerInterface_Expecter) SendConfirmationEmail(to any, name any, link any) *MockMailerInterface_SendConfirmationEmail_Call {
 	return &MockMailerInterface_SendConfirmationEmail_Call{Call: _e.mock.On("SendConfirmationEmail", to, name, link)}
 }
 
@@ -124,7 +133,7 @@ type MockMailerInterface_SendPasswordResetEmail_Call struct {
 //   - to string
 //   - name string
 //   - link string
-func (_e *MockMailerInterface_Expecter) SendPasswordResetEmail(to interface{}, name interface{}, link interface{}) *MockMailerInterface_SendPasswordResetEmail_Call {
+func (_e *MockMailerInterface_Expecter) SendPasswordResetEmail(to any, name any, link any) *MockMailerInterface_SendPasswordResetEmail_Call {
 	return &MockMailerInterface_SendPasswordResetEmail_Call{Call: _e.mock.On("SendPasswordResetEmail", to, name, link)}
 }
 

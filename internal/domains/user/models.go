@@ -15,12 +15,9 @@ type User struct {
 	DeletedAt      *time.Time `json:"-"`
 }
 
-type PaginatedUsers struct {
-	Data       []*User `json:"data"`
-	Page       int     `json:"page"`
-	PageSize   int     `json:"page_size"`
-	Total      int     `json:"total"`
-	TotalPages int     `json:"total_pages"`
+type userCursor struct {
+	CreatedAt time.Time `json:"c"`
+	ID        int64     `json:"i"`
 }
 
 type Role struct {

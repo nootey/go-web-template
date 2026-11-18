@@ -9,6 +9,7 @@ func TestLoadEnvOverrides(t *testing.T) {
 	t.Setenv("DATABASE_HOST", "db")
 	t.Setenv("DATABASE_NAME", "go_template")
 	t.Setenv("APP_ENVIRONMENT", "production")
+	t.Setenv("APP_ALLOW_SIGNUP", "true")
 	t.Setenv("SEED_ROOT_USER", "seeded@example.com")
 	t.Setenv("REDIS_HOST", "redis")
 	t.Setenv("REDIS_PORT", "6380")
@@ -29,6 +30,9 @@ func TestLoadEnvOverrides(t *testing.T) {
 	}
 	if c.App.Environment != "production" {
 		t.Errorf("App.Environment = %q, want %q", c.App.Environment, "production")
+	}
+	if !c.App.AllowSignup {
+		t.Error("App.AllowSignup = false, want true")
 	}
 	if c.Seed.RootUser != "seeded@example.com" {
 		t.Errorf("Seed.RootUser = %q, want %q", c.Seed.RootUser, "seeded@example.com")
@@ -58,6 +62,9 @@ func TestLoadDefaults(t *testing.T) {
 
 	if c.Server.Port != "8080" {
 		t.Errorf("Server.Port = %q, want %q", c.Server.Port, "8080")
+	}
+	if c.App.AllowSignup {
+		t.Error("App.AllowSignup = true, want false")
 	}
 	if c.Redis.Port != 6379 || c.Redis.DB != 0 {
 		t.Errorf("Redis = %+v, want port 6379 db 0", c.Redis)

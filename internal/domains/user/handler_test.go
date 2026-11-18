@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/user"
+	"go-web-template/internal/utils"
 	"go-web-template/mocks"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,8 @@ func TestUserHandlerTestSuite(t *testing.T) {
 
 // Test successful user listing
 func (suite *UserHandlerTestSuite) TestListUsers_Success() {
-	mockUsers := &user.PaginatedUsers{
+	next := "next"
+	mockUsers := &utils.Page[*user.User]{
 		Data: []*user.User{
 			{
 				ID:          1,
@@ -55,58 +57,27 @@ func (suite *UserHandlerTestSuite) TestListUsers_Success() {
 				DisplayName: "Test User 2",
 			},
 		},
-		Page:       1,
-		PageSize:   10,
-		Total:      2,
-		TotalPages: 1,
+		NextCursor: &next,
 	}
 
 	suite.mockService.EXPECT().
-		ListUsers(mock.Anything, 1, 10).
+		ListUsers(mock.Anything, "abc", 10).
 		Return(mockUsers, nil).
 		Once()
 
-	req := httptest.NewRequest(http.MethodGet, "/users?page=1&page_size=10", nil)
+	req := httptest.NewRequest(http.MethodGet, "/users?cursor=abc&page_size=10", nil)
 	w := httptest.NewRecorder()
 
 	suite.router.ServeHTTP(w, req)
 
 	suite.Equal(http.StatusOK, w.Code)
 
-	var response user.PaginatedUsers
+	var response utils.Page[*user.User]
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	suite.Require().NoError(err)
 	suite.Len(response.Data, 2)
-	suite.Equal(2, response.Total)
-}
-
-// Test with pagination parameters
-func (suite *UserHandlerTestSuite) TestListUsers_WithPagination() {
-	mockUsers := &user.PaginatedUsers{
-		Data:       []*user.User{},
-		Page:       2,
-		PageSize:   5,
-		Total:      10,
-		TotalPages: 2,
-	}
-
-	suite.mockService.EXPECT().
-		ListUsers(mock.Anything, 2, 5).
-		Return(mockUsers, nil).
-		Once()
-
-	req := httptest.NewRequest(http.MethodGet, "/users?page=2&page_size=5", nil)
-	w := httptest.NewRecorder()
-
-	suite.router.ServeHTTP(w, req)
-
-	suite.Equal(http.StatusOK, w.Code)
-
-	var response user.PaginatedUsers
-	err := json.Unmarshal(w.Body.Bytes(), &response)
-	suite.Require().NoError(err)
-	suite.Equal(2, response.Page)
-	suite.Equal(5, response.PageSize)
+	suite.Require().NotNil(response.NextCursor)
+	suite.Equal("next", *response.NextCursor)
 }
 
 // Test service error handling
@@ -131,22 +102,18 @@ func (suite *UserHandlerTestSuite) TestListUsers_ServiceError() {
 
 // Test default pagination values
 func (suite *UserHandlerTestSuite) TestListUsers_DefaultPagination() {
-	// When page/page_size not provided, service should receive defaults
 	suite.mockService.EXPECT().
-		ListUsers(mock.Anything, 0, 0).
-		Return(&user.PaginatedUsers{
-			Data:       []*user.User{},
-			Page:       1,
-			PageSize:   20,
-			Total:      0,
-			TotalPages: 0,
-		}, nil).
-		Once()
+		ListUsers(mock.Anything, "", 0).
+		Return(&utils.Page[*user.User]{Data: []*user.User{}}, nil).
+		Twice()
 
-	req := httptest.NewRequest(http.MethodGet, "/users", nil)
-	w := httptest.NewRecorder()
+	for _, query := range []string{"", "?page=2&page_size=-x"} {
+		req := httptest.NewRequest(http.MethodGet, "/users"+query, nil)
+		w := httptest.NewRecorder()
 
-	suite.router.ServeHTTP(w, req)
+		suite.router.ServeHTTP(w, req)
 
-	suite.Equal(http.StatusOK, w.Code)
+		suite.Equal(http.StatusOK, w.Code, query)
+		suite.JSONEq(`{"data":[],"next_cursor":null}`, w.Body.String(), query)
+	}
 }

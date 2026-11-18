@@ -72,6 +72,35 @@ func (suite *AuthHandlerTestSuite) TestRegister_Success() {
 	suite.Empty(w.Result().Cookies()) // no auto-login
 }
 
+func (suite *AuthHandlerTestSuite) TestRegister_SignupOff() {
+	suite.mockService.EXPECT().
+		Register(mock.Anything, "Jane", "jane@example.com", "supersecret").
+		Return(apperr.New(apperr.KindForbidden, "sign up is turned off")).
+		Once()
+
+	w := suite.do(http.MethodPost, "/auth/register", auth.RegisterRequest{
+		DisplayName:          "Jane",
+		Email:                "jane@example.com",
+		Password:             "supersecret",
+		PasswordConfirmation: "supersecret",
+	})
+
+	suite.Equal(http.StatusForbidden, w.Code)
+}
+
+func (suite *AuthHandlerTestSuite) TestSignup() {
+	for _, allowed := range []bool{true, false} {
+		suite.mockService.EXPECT().SignupAllowed().Return(allowed).Once()
+
+		w := suite.do(http.MethodGet, "/auth/signup", nil)
+
+		suite.Equal(http.StatusOK, w.Code)
+		var got auth.SignupResponse
+		suite.Require().NoError(json.NewDecoder(w.Body).Decode(&got))
+		suite.Equal(allowed, got.AllowSignup)
+	}
+}
+
 func (suite *AuthHandlerTestSuite) TestRegister_PasswordMismatch() {
 	w := suite.do(http.MethodPost, "/auth/register", auth.RegisterRequest{
 		DisplayName:          "Jane",

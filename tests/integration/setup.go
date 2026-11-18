@@ -10,16 +10,13 @@ import (
 	"go-web-template/internal/store/seeders"
 	"go-web-template/internal/tokens"
 	"path/filepath"
-	"time"
 
 	"github.com/alicebob/miniredis/v2"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/suite"
-	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"go.uber.org/zap"
 )
 
@@ -70,11 +67,8 @@ func (s *ServiceIntegrationSuite) SetupSuite() {
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2).
-				WithStartupTimeout(30*time.Second),
-		),
+		// The ready log can come before the port is mapped, so wait for both.
+		postgres.BasicWaitStrategies(),
 	)
 	s.Require().NoError(err, "failed to start container")
 
@@ -129,6 +123,7 @@ func (s *ServiceIntegrationSuite) SetupSuite() {
 func testConfig() *config.Config {
 	cfg := &config.Config{}
 	cfg.App.Environment = "local"
+	cfg.App.AllowSignup = true
 	cfg.Server.Host = "localhost"
 	cfg.Server.Port = "8080"
 	cfg.WebClient.Domain = "localhost"

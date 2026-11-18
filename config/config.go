@@ -45,6 +45,7 @@ type AppConfig struct {
 	Environment  string `mapstructure:"environment" validate:"required,oneof=local development production"`
 	LogLevel     string `mapstructure:"log_level" validate:"required,oneof=debug info warn error fatal"`
 	CookieDomain string `mapstructure:"cookie_domain"`
+	AllowSignup  bool   `mapstructure:"allow_signup"`
 }
 
 type WebClientConfig struct {
@@ -104,6 +105,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.environment", "local")
 	v.SetDefault("app.log_level", "debug")
 	v.SetDefault("app.cookie_domain", "")
+	v.SetDefault("app.allow_signup", false)
 
 	v.SetDefault("web_client.domain", "localhost")
 	v.SetDefault("web_client.port", "5173")

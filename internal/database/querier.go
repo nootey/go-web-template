@@ -11,7 +11,6 @@ import (
 type Querier interface {
 	AssignPermissionToRole(ctx context.Context, arg AssignPermissionToRoleParams) error
 	ConfirmUserEmail(ctx context.Context, id int64) error
-	CountUsers(ctx context.Context) (int64, error)
 	CreatePermission(ctx context.Context, arg CreatePermissionParams) (Permission, error)
 	CreateRole(ctx context.Context, arg CreateRoleParams) (Role, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -20,7 +19,7 @@ type Querier interface {
 	GetRoleByName(ctx context.Context, name string) (Role, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int64) (User, error)
-	ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]User, error)
+	ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error)
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
 }
 

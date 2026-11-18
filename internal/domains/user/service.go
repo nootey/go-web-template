@@ -2,12 +2,13 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"go-web-template/internal/database"
-	"math"
+	"go-web-template/internal/utils"
 )
 
 type UserServiceInterface interface {
-	ListUsers(ctx context.Context, page, pageSize int) (*PaginatedUsers, error)
+	ListUsers(ctx context.Context, cursor string, pageSize int) (*utils.Page[*User], error)
 }
 
 var _ UserServiceInterface = (*UserService)(nil)
@@ -42,41 +43,30 @@ func toUserModel(dbUser database.User) *User {
 	return user
 }
 
-func (s *UserService) ListUsers(ctx context.Context, page, pageSize int) (*PaginatedUsers, error) {
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+func (s *UserService) ListUsers(ctx context.Context, cursor string, pageSize int) (*utils.Page[*User], error) {
+	var after userCursor
+	if cursor != "" {
+		if err := utils.DecodeCursor(cursor, &after); err != nil {
+			return nil, err
+		}
 	}
-	// Cap page so the offset still fits in int32
-	page = min(max(page, 1), math.MaxInt32/pageSize)
+	size := utils.PageSize(pageSize)
 
-	offset := (page - 1) * pageSize
-
-	dbUsers, err := s.queries.ListUsersPaginated(ctx, database.ListUsersPaginatedParams{
-		Limit:  int32(pageSize),
-		Offset: int32(offset), //nolint:gosec // page is capped above so the offset fits
+	dbUsers, err := s.queries.ListUsersPage(ctx, database.ListUsersPageParams{
+		AfterCreatedAt: sql.NullTime{Time: after.CreatedAt, Valid: cursor != ""},
+		AfterID:        sql.NullInt64{Int64: after.ID, Valid: cursor != ""},
+		Limit:          size + 1,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	total, err := s.queries.CountUsers(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert to domain models
 	users := make([]*User, len(dbUsers))
 	for i, dbUser := range dbUsers {
 		users[i] = toUserModel(dbUser)
 	}
 
-	totalPages := (int(total) + pageSize - 1) / pageSize
-
-	return &PaginatedUsers{
-		Data:       users,
-		Page:       page,
-		PageSize:   pageSize,
-		Total:      int(total),
-		TotalPages: totalPages,
-	}, nil
+	return utils.NewPage(users, size, func(u *User) any {
+		return userCursor{CreatedAt: u.CreatedAt, ID: u.ID}
+	})
 }

@@ -17,10 +17,19 @@ func NewMockAuthMiddlewareInterface(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockAuthMiddlewareInterface {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockAuthMiddlewareInterface{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -51,7 +60,7 @@ type MockAuthMiddlewareInterface_ClearSessionCookie_Call struct {
 
 // ClearSessionCookie is a helper method to define mock.On call
 //   - w http.ResponseWriter
-func (_e *MockAuthMiddlewareInterface_Expecter) ClearSessionCookie(w interface{}) *MockAuthMiddlewareInterface_ClearSessionCookie_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) ClearSessionCookie(w any) *MockAuthMiddlewareInterface_ClearSessionCookie_Call {
 	return &MockAuthMiddlewareInterface_ClearSessionCookie_Call{Call: _e.mock.On("ClearSessionCookie", w)}
 }
 
@@ -119,7 +128,7 @@ type MockAuthMiddlewareInterface_CreateLoginSession_Call struct {
 //   - ctx context.Context
 //   - userID int64
 //   - rememberMe bool
-func (_e *MockAuthMiddlewareInterface_Expecter) CreateLoginSession(ctx interface{}, userID interface{}, rememberMe interface{}) *MockAuthMiddlewareInterface_CreateLoginSession_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) CreateLoginSession(ctx any, userID any, rememberMe any) *MockAuthMiddlewareInterface_CreateLoginSession_Call {
 	return &MockAuthMiddlewareInterface_CreateLoginSession_Call{Call: _e.mock.On("CreateLoginSession", ctx, userID, rememberMe)}
 }
 
@@ -181,7 +190,7 @@ type MockAuthMiddlewareInterface_DestroySession_Call struct {
 // DestroySession is a helper method to define mock.On call
 //   - ctx context.Context
 //   - sessionID string
-func (_e *MockAuthMiddlewareInterface_Expecter) DestroySession(ctx interface{}, sessionID interface{}) *MockAuthMiddlewareInterface_DestroySession_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) DestroySession(ctx any, sessionID any) *MockAuthMiddlewareInterface_DestroySession_Call {
 	return &MockAuthMiddlewareInterface_DestroySession_Call{Call: _e.mock.On("DestroySession", ctx, sessionID)}
 }
 
@@ -238,7 +247,7 @@ type MockAuthMiddlewareInterface_RevokeAllSessions_Call struct {
 // RevokeAllSessions is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID int64
-func (_e *MockAuthMiddlewareInterface_Expecter) RevokeAllSessions(ctx interface{}, userID interface{}) *MockAuthMiddlewareInterface_RevokeAllSessions_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) RevokeAllSessions(ctx any, userID any) *MockAuthMiddlewareInterface_RevokeAllSessions_Call {
 	return &MockAuthMiddlewareInterface_RevokeAllSessions_Call{Call: _e.mock.On("RevokeAllSessions", ctx, userID)}
 }
 
@@ -285,7 +294,7 @@ type MockAuthMiddlewareInterface_SetSessionCookie_Call struct {
 //   - w http.ResponseWriter
 //   - id string
 //   - maxAge int
-func (_e *MockAuthMiddlewareInterface_Expecter) SetSessionCookie(w interface{}, id interface{}, maxAge interface{}) *MockAuthMiddlewareInterface_SetSessionCookie_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) SetSessionCookie(w any, id any, maxAge any) *MockAuthMiddlewareInterface_SetSessionCookie_Call {
 	return &MockAuthMiddlewareInterface_SetSessionCookie_Call{Call: _e.mock.On("SetSessionCookie", w, id, maxAge)}
 }
 
@@ -348,7 +357,7 @@ type MockAuthMiddlewareInterface_WebClientAuthentication_Call struct {
 
 // WebClientAuthentication is a helper method to define mock.On call
 //   - next http.Handler
-func (_e *MockAuthMiddlewareInterface_Expecter) WebClientAuthentication(next interface{}) *MockAuthMiddlewareInterface_WebClientAuthentication_Call {
+func (_e *MockAuthMiddlewareInterface_Expecter) WebClientAuthentication(next any) *MockAuthMiddlewareInterface_WebClientAuthentication_Call {
 	return &MockAuthMiddlewareInterface_WebClientAuthentication_Call{Call: _e.mock.On("WebClientAuthentication", next)}
 }
 
