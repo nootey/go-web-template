@@ -46,14 +46,18 @@ COMPOSE_ARM_OBS := -f ./docker-compose.arm.observability.yaml
 BUILD = $(if $(build),$(COMPOSE_BUILD))
 FETCH = $(if $(build),--build,--pull always)
 
+# Pass arm=1 to run on an ARM board
+ARM = $(if $(arm),$(COMPOSE_ARM))
+ARM_OBS = $(if $(arm),$(COMPOSE_ARM_OBS))
+
 docker-up:
-	docker compose $(COMPOSE_OBS) $(COMPOSE) $(BUILD) up -d $(FETCH)
+	docker compose $(COMPOSE_OBS) $(ARM_OBS) $(COMPOSE) $(ARM) $(BUILD) up -d $(FETCH)
 
 docker-down:
-	docker compose $(COMPOSE_OBS) $(COMPOSE) down
+	docker compose $(COMPOSE_OBS) $(ARM_OBS) $(COMPOSE) $(ARM) down
 
 docker-restart:
-	docker compose $(COMPOSE_OBS) $(COMPOSE) restart
+	docker compose $(COMPOSE_OBS) $(ARM_OBS) $(COMPOSE) $(ARM) restart
 
 observability-up:
 	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) up -d
@@ -62,25 +66,10 @@ observability-down:
 	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) down
 
 docker-migrate:
-	docker compose $(COMPOSE) $(BUILD) run --rm $(FETCH) migrate $(or $(type),up)
+	docker compose $(COMPOSE) $(ARM) $(BUILD) run --rm $(FETCH) migrate $(or $(type),up)
 
 docker-seed:
-	docker compose $(COMPOSE) $(BUILD) run --rm $(FETCH) --entrypoint seed migrate $(or $(type),core)
-
-docker-arm-up:
-	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) $(BUILD) up -d $(FETCH)
-
-docker-arm-down:
-	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) down
-
-docker-arm-restart:
-	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) restart
-
-docker-arm-migrate:
-	docker compose $(COMPOSE) $(COMPOSE_ARM) $(BUILD) run --rm $(FETCH) migrate $(or $(type),up)
-
-docker-arm-seed:
-	docker compose $(COMPOSE) $(COMPOSE_ARM) $(BUILD) run --rm $(FETCH) --entrypoint seed migrate $(or $(type),core)
+	docker compose $(COMPOSE) $(ARM) $(BUILD) run --rm $(FETCH) --entrypoint seed migrate $(or $(type),core)
 
 # SQLC
 sqlc:
