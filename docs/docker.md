@@ -32,22 +32,28 @@ These are the values to set for a deployment:
 `docker-compose.yaml` pulls the published images, `nootey/go-web-template` and `nootey/go-web-template-client`.
 Each release builds them for amd64 and arm64. `docker-compose.build.yaml` builds them from source instead.
 
+The `up`, `migrate` and `seed` make commands pull the latest published images, so `make docker-up` also updates the app.
+To build from source instead, add `build=1`, for example `make docker-up build=1`.
+
+## Migrations
+
+The `migrate` service runs `migrate up` before the API starts.
+Each start applies new migrations, so the first start also creates the schema.
+
 ## Run on a server
 
 Traefik gets a TLS certificate from Let's Encrypt, so your domain must point to the server, and ports 80 and 443 must be open.
-These commands build the images from source.
-
-For the first time setup, you must run the migrations and seed the root user:
-
-```sh
-make docker-migrate
-make docker-seed
-```
 
 To start all services, including the observability stack, use:
 
 ```sh
 make docker-up
+```
+
+For the first time setup, seed the root user after the first start:
+
+```sh
+make docker-seed
 ```
 
 The app is then available at `https://<your-domain>`.
@@ -66,19 +72,18 @@ For a Raspberry Pi or another ARM board. The board runs no Traefik.
 The client serves the app on `WEB_CLIENT_PORT`, and Grafana runs on `GRAFANA_PORT`.
 Set `APP_ENVIRONMENT=development`: production needs HTTPS for its cookies.
 
+Use the same make commands as on a server, and add `arm=1`:
+
 ```sh
-make docker-arm-migrate
-make docker-arm-seed
-make docker-arm-up
+make docker-up arm=1
+make docker-seed arm=1   # first time setup only
 ```
 
 The app is then available at `http://<WEB_CLIENT_DOMAIN>:<WEB_CLIENT_PORT>`.
-Each command pulls the latest published images, so `make docker-arm-up` also updates the app.
-To build on the board instead, add `build=1`, for example `make docker-arm-up build=1`.
 
 To restart or stop all services, use:
 
 ```sh
-make docker-arm-restart
-make docker-arm-down
+make docker-restart arm=1
+make docker-down arm=1
 ```
