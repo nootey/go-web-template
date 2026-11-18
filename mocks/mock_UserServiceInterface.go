@@ -7,6 +7,7 @@ package mocks
 import (
 	"context"
 	"go-web-template/internal/domains/user"
+	"go-web-template/internal/utils"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -17,10 +18,19 @@ func NewMockUserServiceInterface(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockUserServiceInterface {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockUserServiceInterface{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -39,27 +49,27 @@ func (_m *MockUserServiceInterface) EXPECT() *MockUserServiceInterface_Expecter 
 }
 
 // ListUsers provides a mock function for the type MockUserServiceInterface
-func (_mock *MockUserServiceInterface) ListUsers(ctx context.Context, page int, pageSize int) (*user.PaginatedUsers, error) {
-	ret := _mock.Called(ctx, page, pageSize)
+func (_mock *MockUserServiceInterface) ListUsers(ctx context.Context, cursor string, pageSize int) (*utils.Page[*user.User], error) {
+	ret := _mock.Called(ctx, cursor, pageSize)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListUsers")
 	}
 
-	var r0 *user.PaginatedUsers
+	var r0 *utils.Page[*user.User]
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) (*user.PaginatedUsers, error)); ok {
-		return returnFunc(ctx, page, pageSize)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int) (*utils.Page[*user.User], error)); ok {
+		return returnFunc(ctx, cursor, pageSize)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, int, int) *user.PaginatedUsers); ok {
-		r0 = returnFunc(ctx, page, pageSize)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, int) *utils.Page[*user.User]); ok {
+		r0 = returnFunc(ctx, cursor, pageSize)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*user.PaginatedUsers)
+			r0 = ret.Get(0).(*utils.Page[*user.User])
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
-		r1 = returnFunc(ctx, page, pageSize)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, int) error); ok {
+		r1 = returnFunc(ctx, cursor, pageSize)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -73,21 +83,21 @@ type MockUserServiceInterface_ListUsers_Call struct {
 
 // ListUsers is a helper method to define mock.On call
 //   - ctx context.Context
-//   - page int
+//   - cursor string
 //   - pageSize int
-func (_e *MockUserServiceInterface_Expecter) ListUsers(ctx interface{}, page interface{}, pageSize interface{}) *MockUserServiceInterface_ListUsers_Call {
-	return &MockUserServiceInterface_ListUsers_Call{Call: _e.mock.On("ListUsers", ctx, page, pageSize)}
+func (_e *MockUserServiceInterface_Expecter) ListUsers(ctx any, cursor any, pageSize any) *MockUserServiceInterface_ListUsers_Call {
+	return &MockUserServiceInterface_ListUsers_Call{Call: _e.mock.On("ListUsers", ctx, cursor, pageSize)}
 }
 
-func (_c *MockUserServiceInterface_ListUsers_Call) Run(run func(ctx context.Context, page int, pageSize int)) *MockUserServiceInterface_ListUsers_Call {
+func (_c *MockUserServiceInterface_ListUsers_Call) Run(run func(ctx context.Context, cursor string, pageSize int)) *MockUserServiceInterface_ListUsers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 int
+		var arg1 string
 		if args[1] != nil {
-			arg1 = args[1].(int)
+			arg1 = args[1].(string)
 		}
 		var arg2 int
 		if args[2] != nil {
@@ -102,12 +112,12 @@ func (_c *MockUserServiceInterface_ListUsers_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockUserServiceInterface_ListUsers_Call) Return(paginatedUsers *user.PaginatedUsers, err error) *MockUserServiceInterface_ListUsers_Call {
-	_c.Call.Return(paginatedUsers, err)
+func (_c *MockUserServiceInterface_ListUsers_Call) Return(page *utils.Page[*user.User], err error) *MockUserServiceInterface_ListUsers_Call {
+	_c.Call.Return(page, err)
 	return _c
 }
 
-func (_c *MockUserServiceInterface_ListUsers_Call) RunAndReturn(run func(ctx context.Context, page int, pageSize int) (*user.PaginatedUsers, error)) *MockUserServiceInterface_ListUsers_Call {
+func (_c *MockUserServiceInterface_ListUsers_Call) RunAndReturn(run func(ctx context.Context, cursor string, pageSize int) (*utils.Page[*user.User], error)) *MockUserServiceInterface_ListUsers_Call {
 	_c.Call.Return(run)
 	return _c
 }

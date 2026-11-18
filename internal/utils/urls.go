@@ -2,11 +2,6 @@ package utils
 
 import "go-web-template/config"
 
-// APIBaseURL returns the API base URL; https with no port in production.
-func APIBaseURL(cfg *config.Config) string {
-	return buildBaseURL(cfg.App.Environment == "production", cfg.Server.Host, cfg.Server.Port)
-}
-
 // WebClientBaseURL returns the web client base URL; https with no port in production.
 func WebClientBaseURL(cfg *config.Config) string {
 	return buildBaseURL(cfg.App.Environment == "production", cfg.WebClient.Domain, cfg.WebClient.Port)

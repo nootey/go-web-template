@@ -36,14 +36,24 @@ seed-full:
 
 # Docker
 COMPOSE := -f ./docker-compose.yaml
+COMPOSE_BUILD := -f ./docker-compose.build.yaml
 COMPOSE_OBS := -f ./docker-compose.observability.yaml
 COMPOSE_OBS_LOCAL := -f ./docker-compose.observability.local.yaml
+COMPOSE_ARM := -f ./docker-compose.arm.yaml
+COMPOSE_ARM_OBS := -f ./docker-compose.arm.observability.yaml
+
+# ARM targets pull the published images by default; pass build=1 to build on the board instead
+ARM_BUILD = $(if $(build),$(COMPOSE_BUILD))
+ARM_FETCH = $(if $(build),--build,--pull always)
 
 docker-up:
-	docker compose $(COMPOSE_OBS) $(COMPOSE) up -d --build
+	docker compose $(COMPOSE_OBS) $(COMPOSE) $(COMPOSE_BUILD) up -d --build
 
 docker-down:
 	docker compose $(COMPOSE_OBS) $(COMPOSE) down
+
+docker-restart:
+	docker compose $(COMPOSE_OBS) $(COMPOSE) restart
 
 observability-up:
 	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) up -d
@@ -52,10 +62,25 @@ observability-down:
 	docker compose $(COMPOSE_OBS) $(COMPOSE_OBS_LOCAL) down
 
 docker-migrate:
-	docker compose $(COMPOSE) run --rm --build migrate $(or $(type),up)
+	docker compose $(COMPOSE) $(COMPOSE_BUILD) run --rm --build migrate $(or $(type),up)
 
 docker-seed:
-	docker compose $(COMPOSE) run --rm --build --entrypoint seed migrate $(or $(type),core)
+	docker compose $(COMPOSE) $(COMPOSE_BUILD) run --rm --build --entrypoint seed migrate $(or $(type),core)
+
+docker-arm-up:
+	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) $(ARM_BUILD) up -d $(ARM_FETCH)
+
+docker-arm-down:
+	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) down
+
+docker-arm-restart:
+	docker compose $(COMPOSE_OBS) $(COMPOSE_ARM_OBS) $(COMPOSE) $(COMPOSE_ARM) restart
+
+docker-arm-migrate:
+	docker compose $(COMPOSE) $(COMPOSE_ARM) $(ARM_BUILD) run --rm $(ARM_FETCH) migrate $(or $(type),up)
+
+docker-arm-seed:
+	docker compose $(COMPOSE) $(COMPOSE_ARM) $(ARM_BUILD) run --rm $(ARM_FETCH) --entrypoint seed migrate $(or $(type),core)
 
 # SQLC
 sqlc:

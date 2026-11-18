@@ -1,8 +1,7 @@
 import { defineStore } from "pinia";
 import apiClient from "../api/api_client.ts";
-import { useThemeStore } from "./theme_store.ts";
 import type { User } from "../../domains/user/models.ts";
-import type { AuthForm } from "../../domains/auth/models.ts";
+import type { AuthForm, SignupStatus } from "../../domains/auth/models.ts";
 import router from "../router/router.ts";
 
 export const useAuthStore = defineStore("auth", {
@@ -24,6 +23,11 @@ export const useAuthStore = defineStore("auth", {
             const response = await apiClient.post(`${this.apiPrefix}/login`, form);
             await this.init();
             return response;
+        },
+
+        async signupAllowed(): Promise<boolean> {
+            const response = await apiClient.get<SignupStatus>(`${this.apiPrefix}/signup`);
+            return response.data.allow_signup;
         },
 
         async signUp(form: AuthForm, invitation_id: number | null = null) {
@@ -77,11 +81,7 @@ export const useAuthStore = defineStore("auth", {
             this.setAuthenticated(false);
             this.setInitialized(null);
 
-            localStorage.clear();
             sessionStorage.clear();
-
-            const themeStore = useThemeStore();
-            themeStore.setTheme("dark");
 
             router.push("/login").then();
         },
@@ -101,14 +101,6 @@ export const useAuthStore = defineStore("auth", {
                 const user = await this.getAuthUser(true);
                 if (user) {
                     this.setInitialized(user);
-
-                    const themeStore = useThemeStore();
-
-                    try {
-                        themeStore.setTheme("system");
-                    } catch (error) {
-                        console.error("Failed to load theme settings:", error);
-                    }
                 } else {
                     this.setAuthenticated(false);
                     this.setInitialized(null);

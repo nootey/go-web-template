@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 )
 
 const confirmUserEmail = `-- name: ConfirmUserEmail :exec
@@ -17,18 +18,6 @@ WHERE id = $1 AND deleted_at IS NULL
 func (q *Queries) ConfirmUserEmail(ctx context.Context, id int64) error {
 	_, err := q.db.ExecContext(ctx, confirmUserEmail, id)
 	return err
-}
-
-const countUsers = `-- name: CountUsers :one
-SELECT COUNT(*) FROM users
-WHERE deleted_at IS NULL
-`
-
-func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsers)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }
 
 const createUser = `-- name: CreateUser :one
@@ -130,20 +119,23 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
-const listUsersPaginated = `-- name: ListUsersPaginated :many
+const listUsersPage = `-- name: ListUsersPage :many
 SELECT id, email, password, display_name, email_confirmed, role_id, created_at, updated_at, deleted_at FROM users
 WHERE deleted_at IS NULL
-ORDER BY created_at DESC
-    LIMIT $1 OFFSET $2
+  AND ($1::timestamp IS NULL
+    OR (created_at, id) < ($1::timestamp, $2::bigint))
+ORDER BY created_at DESC, id DESC
+    LIMIT $3
 `
 
-type ListUsersPaginatedParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+type ListUsersPageParams struct {
+	AfterCreatedAt sql.NullTime  `json:"after_created_at"`
+	AfterID        sql.NullInt64 `json:"after_id"`
+	Limit          int32         `json:"limit"`
 }
 
-func (q *Queries) ListUsersPaginated(ctx context.Context, arg ListUsersPaginatedParams) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersPaginated, arg.Limit, arg.Offset)
+func (q *Queries) ListUsersPage(ctx context.Context, arg ListUsersPageParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersPage, arg.AfterCreatedAt, arg.AfterID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}

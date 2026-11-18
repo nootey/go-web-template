@@ -17,3 +17,9 @@ export type RequestOptions = {
     headers?: Record<string, string>;
     responseType?: "blob";
 };
+
+// One page of a list. next_cursor is null on the last page.
+export interface Page<T> {
+    data: T[];
+    next_cursor: string | null;
+}

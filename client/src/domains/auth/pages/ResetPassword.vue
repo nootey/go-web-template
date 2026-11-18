@@ -57,7 +57,7 @@ async function resetPassword() {
 <template>
     <AuthSkeleton>
         <div class="w-full max-w-md mx-auto px-3 sm:px-0">
-            <div v-if="!token" class="text-center text-sm text-gray-600 dark:text-gray-400">
+            <div v-if="!token" class="text-center text-sm text-fg-muted">
                 This password reset link is invalid or incomplete.
             </div>
 
@@ -98,15 +98,15 @@ async function resetPassword() {
                 <Button
                     :label="loading ? 'Updating...' : 'Update password'"
                     :icon="loading ? 'pi pi-spin pi-spinner mr-2' : ''"
-                    class="w-full auth-accent-button"
+                    class="w-full"
                     :disabled="loading"
                     @click="resetPassword"
                 />
             </div>
 
-            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-edge">
                 <span
-                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                    class="text-sm font-medium text-accent hover:underline underline-offset-4 cursor-pointer"
                     @click="router.push({ name: 'login' })"
                 >
                     Back to log in

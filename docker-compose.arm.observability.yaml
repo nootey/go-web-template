@@ -1,0 +1,5 @@
+# ARM overlay for the observability stack. With no Traefik, Grafana gets a host port.
+services:
+  grafana:
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"

@@ -27,6 +27,10 @@ type ResetPasswordRequest struct {
 	PasswordConfirmation string `json:"password_confirmation"`
 }
 
+type SignupResponse struct {
+	AllowSignup bool `json:"allow_signup"`
+}
+
 type MeResponse struct {
 	ID          int64  `json:"id"`
 	Email       string `json:"email"`

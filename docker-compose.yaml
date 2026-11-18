@@ -28,15 +28,13 @@ services:
     image: postgres:latest
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-go_template}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-postgres}
+      POSTGRES_DB: ${DATABASE_NAME:-go-web-template}
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-go_template}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-go-web-template}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,11 +44,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
     volumes:
       - redis:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-}", "--no-auth-warning", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -58,27 +56,21 @@ services:
       - app_network
 
   migrate:
-    build:
-      context: .
-      dockerfile: ./build/Dockerfile
+    image: nootey/go-web-template:latest
     depends_on:
       db:
         condition: service_healthy
+    env_file: .env
     environment:
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
-      - DATABASE_USER=${POSTGRES_USER:-postgres}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DATABASE_NAME=${POSTGRES_DB:-go_template}
     entrypoint: ["migrate"]
     command: ["up"]
     networks:
       - app_network
 
   api:
-    build:
-      context: .
-      dockerfile: ./build/Dockerfile
+    image: nootey/go-web-template:latest
     restart: unless-stopped
     depends_on:
       db:
@@ -87,39 +79,35 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    env_file: .env
     environment:
-      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-development}
+      # The client's Caddyfile and Prometheus reach the API at api:8080
       - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=${SERVER_PORT:-8080}
+      - SERVER_PORT=8080
       - DATABASE_HOST=db
       - DATABASE_PORT=5432
-      - DATABASE_USER=${POSTGRES_USER:-postgres}
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - DATABASE_NAME=${POSTGRES_DB:-go_template}
-      - DATABASE_SSL_MODE=disable
       - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - ./logs:/app/logs
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api.rule=Host(`${HOST:-localhost}`) && PathPrefix(`/api`)
+      - traefik.http.routers.api.rule=Host(`${WEB_CLIENT_DOMAIN:-localhost}`) && PathPrefix(`/api`)
       - traefik.http.routers.api.entrypoints=websecure
       - traefik.http.routers.api.tls.certresolver=le
-      - traefik.http.services.api.loadbalancer.server.port=${SERVER_PORT:-8080}
+      - traefik.http.services.api.loadbalancer.server.port=8080
     networks:
       - app_network
 
   client:
-    build:
-      context: .
-      dockerfile: ./build/Dockerfile.client
+    image: nootey/go-web-template-client:latest
     restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
     labels:
       - traefik.enable=true
-      - traefik.http.routers.client.rule=Host(`${HOST:-localhost}`) && PathPrefix(`/`)
+      - traefik.http.routers.client.rule=Host(`${WEB_CLIENT_DOMAIN:-localhost}`) && PathPrefix(`/`)
       - traefik.http.routers.client.entrypoints=websecure
       - traefik.http.routers.client.tls.certresolver=le
       - traefik.http.services.client.loadbalancer.server.port=80

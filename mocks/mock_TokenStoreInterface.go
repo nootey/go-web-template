@@ -17,10 +17,19 @@ func NewMockTokenStoreInterface(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockTokenStoreInterface {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockTokenStoreInterface{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -73,7 +82,7 @@ type MockTokenStoreInterface_Consume_Call struct {
 //   - ctx context.Context
 //   - purpose string
 //   - id string
-func (_e *MockTokenStoreInterface_Expecter) Consume(ctx interface{}, purpose interface{}, id interface{}) *MockTokenStoreInterface_Consume_Call {
+func (_e *MockTokenStoreInterface_Expecter) Consume(ctx any, purpose any, id any) *MockTokenStoreInterface_Consume_Call {
 	return &MockTokenStoreInterface_Consume_Call{Call: _e.mock.On("Consume", ctx, purpose, id)}
 }
 
@@ -146,7 +155,7 @@ type MockTokenStoreInterface_Create_Call struct {
 //   - purpose string
 //   - userID int64
 //   - ttl time.Duration
-func (_e *MockTokenStoreInterface_Expecter) Create(ctx interface{}, purpose interface{}, userID interface{}, ttl interface{}) *MockTokenStoreInterface_Create_Call {
+func (_e *MockTokenStoreInterface_Expecter) Create(ctx any, purpose any, userID any, ttl any) *MockTokenStoreInterface_Create_Call {
 	return &MockTokenStoreInterface_Create_Call{Call: _e.mock.On("Create", ctx, purpose, userID, ttl)}
 }
 

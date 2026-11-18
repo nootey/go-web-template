@@ -27,10 +27,9 @@ func (h *UserHandler) Routes() chi.Router {
 }
 
 func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	pageSize, _ := strconv.Atoi(r.URL.Query().Get("page_size"))
 
-	result, err := h.service.ListUsers(r.Context(), page, pageSize)
+	result, err := h.service.ListUsers(r.Context(), r.URL.Query().Get("cursor"), pageSize)
 	if err != nil {
 		h.resp.Error(w, r, err)
 		return

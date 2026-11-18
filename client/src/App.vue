@@ -27,21 +27,24 @@ onMounted(async () => {
     <Toast position="bottom-right" group="br" />
     <ConfirmDialog unstyled>
         <template #container="{ message, acceptCallback, rejectCallback }">
-            <div class="flex justify-center items-center p-overlay-mask p-overlay-mask-enter">
-                <div class="flex flex-col p-5 gap-4 rounded-lg bg-white dark:bg-gray-800 shadow-lg">
-                    <div class="font-bold text-xl text-gray-900 dark:text-gray-100">
+            <div class="p-overlay-mask p-overlay-mask-enter flex items-center justify-center">
+                <div
+                    class="flex w-[min(420px,calc(100vw-2rem))] flex-col gap-4 rounded-2xl border border-edge bg-panel p-6 shadow-2xl"
+                >
+                    <div class="text-lg font-semibold tracking-tight text-fg">
                         {{ message.header }}
                     </div>
-                    <div class="text-gray-900 dark:text-gray-100" v-html="message.message.replace(/\n/g, '<br>')" />
-                    <div class="flex justify-end gap-2">
+                    <div class="whitespace-pre-line text-sm leading-relaxed text-fg-muted">
+                        {{ message.message }}
+                    </div>
+                    <div class="flex justify-end gap-2 pt-2">
                         <Button
-                            class="p-2 rounded-lg text-gray-900 dark:text-gray-100 border-gray-900 dark:border-gray-100"
                             :label="message.rejectProps?.label || 'Cancel'"
+                            severity="secondary"
                             variant="outlined"
                             @click="rejectCallback"
                         />
                         <Button
-                            class="p-2 rounded-lg text-white"
                             :label="message.acceptProps?.label || 'Confirm'"
                             :severity="message.acceptProps?.severity"
                             @click="acceptCallback"
@@ -52,22 +55,12 @@ onMounted(async () => {
         </template>
     </ConfirmDialog>
 
-    <div id="app" class="flex flex-col min-h-screen">
-        <div class="flex-1 app-content">
-            <div v-if="requiresAuthView && !isInitialized" class="w-full h-full flex items-center justify-center">
-                <i class="pi pi-spin pi-spinner text-2xl" />
+    <div class="flex min-h-screen flex-col">
+        <main class="flex flex-1 flex-col">
+            <div v-if="requiresAuthView && !isInitialized" class="flex flex-1 items-center justify-center">
+                <i class="pi pi-spin pi-spinner text-2xl text-fg-muted" />
             </div>
-            <div v-else>
-                <router-view />
-            </div>
-        </div>
+            <router-view v-else />
+        </main>
     </div>
 </template>
-
-<style scoped lang="scss">
-#app {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-</style>

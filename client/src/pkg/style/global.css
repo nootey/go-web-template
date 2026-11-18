@@ -1,0 +1,71 @@
+/* PrimeVue sits below the utilities layer, so Tailwind classes can restyle its components. */
+@layer theme, base, primevue, components, utilities;
+
+@import "tailwindcss";
+@plugin "tailwindcss-primeui";
+
+/* dark: follows the theme toggle, not only the OS setting. */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+@theme inline {
+    --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+
+    --color-page: var(--surface-page);
+    --color-panel: var(--surface-panel);
+    --color-inset: var(--surface-inset);
+    --color-fg: var(--text-strong);
+    --color-fg-muted: var(--text-muted);
+    --color-fg-subtle: var(--text-subtle);
+    --color-edge: var(--edge);
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+    --color-accent-soft: var(--accent-soft);
+    --color-danger: var(--danger);
+}
+
+:root {
+    --surface-page: var(--p-surface-50);
+    --surface-panel: var(--p-surface-0);
+    --surface-inset: var(--p-surface-100);
+    --text-strong: var(--p-surface-950);
+    --text-muted: var(--p-surface-600);
+    --text-subtle: var(--p-surface-400);
+    --edge: var(--p-surface-200);
+    /* Gopher blue 600 fails 4.5:1 on light, so text accents step one shade darker. */
+    --accent: var(--p-primary-700);
+    --accent-strong: var(--p-primary-800);
+    --accent-soft: color-mix(in srgb, var(--p-primary-500), transparent 88%);
+    --danger: var(--p-red-600);
+
+    color-scheme: light;
+}
+
+:root.app-dark {
+    --surface-page: var(--p-surface-950);
+    --surface-panel: var(--p-surface-900);
+    --surface-inset: var(--p-surface-800);
+    --text-strong: var(--p-surface-50);
+    --text-muted: var(--p-surface-300);
+    --text-subtle: var(--p-surface-500);
+    --edge: var(--p-surface-800);
+    --accent: var(--p-primary-400);
+    --accent-strong: var(--p-primary-300);
+    --accent-soft: color-mix(in srgb, var(--p-primary-400), transparent 86%);
+    --danger: var(--p-red-400);
+
+    color-scheme: dark;
+}
+
+@layer base {
+    body {
+        background-color: var(--surface-page);
+        color: var(--text-strong);
+        font-family: var(--font-sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection {
+        background: color-mix(in srgb, var(--p-primary-400), transparent 60%);
+    }
+}

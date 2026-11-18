@@ -1,12 +1,10 @@
--- name: ListUsersPaginated :many
+-- name: ListUsersPage :many
 SELECT * FROM users
 WHERE deleted_at IS NULL
-ORDER BY created_at DESC
-    LIMIT $1 OFFSET $2;
-
--- name: CountUsers :one
-SELECT COUNT(*) FROM users
-WHERE deleted_at IS NULL;
+  AND (sqlc.narg('after_created_at')::timestamp IS NULL
+    OR (created_at, id) < (sqlc.narg('after_created_at')::timestamp, sqlc.narg('after_id')::bigint))
+ORDER BY created_at DESC, id DESC
+    LIMIT sqlc.arg('limit');
 
 -- name: GetUserByEmail :one
 SELECT * FROM users

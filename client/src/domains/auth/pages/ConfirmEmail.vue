@@ -47,9 +47,7 @@ async function resendConfirmation() {
 <template>
     <AuthSkeleton>
         <div class="w-full max-w-md mx-auto px-3 sm:px-0">
-            <p class="text-sm text-gray-600 dark:text-gray-400 text-center mb-3">
-                Enter your email to resend the confirmation link.
-            </p>
+            <p class="text-sm text-fg-muted text-center mb-3">Enter your email to resend the confirmation link.</p>
 
             <div class="flex flex-col gap-3">
                 <div class="flex flex-row w-full">
@@ -72,15 +70,15 @@ async function resendConfirmation() {
                 <Button
                     :label="loading ? 'Sending...' : 'Resend confirmation email'"
                     :icon="loading ? 'pi pi-spin pi-spinner mr-2' : ''"
-                    class="w-full auth-accent-button"
+                    class="w-full"
                     :disabled="loading"
                     @click="resendConfirmation"
                 />
             </div>
 
-            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-edge">
                 <span
-                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                    class="text-sm font-medium text-accent hover:underline underline-offset-4 cursor-pointer"
                     @click="router.push({ name: 'login' })"
                 >
                     Back to log in

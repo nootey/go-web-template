@@ -4,6 +4,8 @@ package auth_test
 
 import (
 	"context"
+	"go-web-template/config"
+	"go-web-template/internal/apperr"
 	"go-web-template/internal/domains/auth"
 	"go-web-template/tests/integration"
 	"net/url"
@@ -35,11 +37,30 @@ func (s *AuthServiceTestSuite) TestRegister_UnconfirmedUserCannotLogin() {
 	err := svc.Register(ctx, "Jane", "jane@example.com", "supersecret")
 	s.Require().NoError(err)
 
-	s.NotEmpty(s.TC.Mailer.ConfirmationLink)
+	link, err := url.Parse(s.TC.Mailer.ConfirmationLink)
+	s.Require().NoError(err)
+	s.Equal("localhost:5173", link.Host)
 
 	// Unconfirmed account: login is blocked.
 	_, err = svc.ValidateCredentials(ctx, "jane@example.com", "supersecret")
 	s.ErrorIs(err, auth.ErrEmailNotConfirmed)
+}
+
+func (s *AuthServiceTestSuite) TestRegister_SignupOff() {
+	svc := auth.NewAuthService(s.TC.Queries, nil, s.TC.Mailer, &config.Config{})
+	ctx := context.Background()
+
+	s.False(svc.SignupAllowed())
+	err := svc.Register(ctx, "Jane", "jane@example.com", "supersecret")
+
+	var appErr *apperr.Error
+	s.Require().ErrorAs(err, &appErr)
+	s.Equal(apperr.KindForbidden, appErr.Kind)
+	s.Empty(s.TC.Mailer.ConfirmationLink)
+
+	var users int
+	s.Require().NoError(s.TC.DB.QueryRowContext(ctx, `SELECT count(*) FROM users`).Scan(&users))
+	s.Zero(users)
 }
 
 func (s *AuthServiceTestSuite) TestConfirmEmail_UnlocksLogin() {

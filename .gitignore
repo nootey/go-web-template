@@ -40,3 +40,6 @@ logs
 
 coverage.html
 coverage.out
+
+# Local work handoff notes
+*-handoff.md

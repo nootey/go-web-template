@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM golang:1.27-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 
 WORKDIR /app
 
@@ -17,8 +17,12 @@ COPY config ./config
 COPY internal ./internal
 COPY pkg ./pkg
 
-# Build all binaries
+# Build all binaries for the target platform
+ARG TARGETOS
+ARG TARGETARCH
 ENV CGO_ENABLED=0
+ENV GOOS=$TARGETOS
+ENV GOARCH=$TARGETARCH
 RUN go build -ldflags="-w -s" -o bin/api ./cmd/api
 RUN go build -ldflags="-w -s" -o bin/migrate ./cmd/migrate
 RUN go build -ldflags="-w -s" -o bin/seed ./cmd/seed

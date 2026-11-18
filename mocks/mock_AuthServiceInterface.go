@@ -17,10 +17,19 @@ func NewMockAuthServiceInterface(t interface {
 	mock.TestingT
 	Cleanup(func())
 }) *MockAuthServiceInterface {
+	if helper, ok := t.(interface{ Helper() }); ok {
+		helper.Helper()
+	}
+
 	mock := &MockAuthServiceInterface{}
 	mock.Mock.Test(t)
 
-	t.Cleanup(func() { mock.AssertExpectations(t) })
+	t.Cleanup(func() {
+		if helper, ok := t.(interface{ Helper() }); ok {
+			helper.Helper()
+		}
+		mock.AssertExpectations(t)
+	})
 
 	return mock
 }
@@ -63,7 +72,7 @@ type MockAuthServiceInterface_ConfirmEmail_Call struct {
 // ConfirmEmail is a helper method to define mock.On call
 //   - ctx context.Context
 //   - tokenID string
-func (_e *MockAuthServiceInterface_Expecter) ConfirmEmail(ctx interface{}, tokenID interface{}) *MockAuthServiceInterface_ConfirmEmail_Call {
+func (_e *MockAuthServiceInterface_Expecter) ConfirmEmail(ctx any, tokenID any) *MockAuthServiceInterface_ConfirmEmail_Call {
 	return &MockAuthServiceInterface_ConfirmEmail_Call{Call: _e.mock.On("ConfirmEmail", ctx, tokenID)}
 }
 
@@ -133,7 +142,7 @@ type MockAuthServiceInterface_CreateUser_Call struct {
 //   - displayName string
 //   - email string
 //   - password string
-func (_e *MockAuthServiceInterface_Expecter) CreateUser(ctx interface{}, displayName interface{}, email interface{}, password interface{}) *MockAuthServiceInterface_CreateUser_Call {
+func (_e *MockAuthServiceInterface_Expecter) CreateUser(ctx any, displayName any, email any, password any) *MockAuthServiceInterface_CreateUser_Call {
 	return &MockAuthServiceInterface_CreateUser_Call{Call: _e.mock.On("CreateUser", ctx, displayName, email, password)}
 }
 
@@ -211,7 +220,7 @@ type MockAuthServiceInterface_GetUserByID_Call struct {
 // GetUserByID is a helper method to define mock.On call
 //   - ctx context.Context
 //   - userID int64
-func (_e *MockAuthServiceInterface_Expecter) GetUserByID(ctx interface{}, userID interface{}) *MockAuthServiceInterface_GetUserByID_Call {
+func (_e *MockAuthServiceInterface_Expecter) GetUserByID(ctx any, userID any) *MockAuthServiceInterface_GetUserByID_Call {
 	return &MockAuthServiceInterface_GetUserByID_Call{Call: _e.mock.On("GetUserByID", ctx, userID)}
 }
 
@@ -270,7 +279,7 @@ type MockAuthServiceInterface_Register_Call struct {
 //   - displayName string
 //   - email string
 //   - password string
-func (_e *MockAuthServiceInterface_Expecter) Register(ctx interface{}, displayName interface{}, email interface{}, password interface{}) *MockAuthServiceInterface_Register_Call {
+func (_e *MockAuthServiceInterface_Expecter) Register(ctx any, displayName any, email any, password any) *MockAuthServiceInterface_Register_Call {
 	return &MockAuthServiceInterface_Register_Call{Call: _e.mock.On("Register", ctx, displayName, email, password)}
 }
 
@@ -337,7 +346,7 @@ type MockAuthServiceInterface_RequestPasswordReset_Call struct {
 // RequestPasswordReset is a helper method to define mock.On call
 //   - ctx context.Context
 //   - email string
-func (_e *MockAuthServiceInterface_Expecter) RequestPasswordReset(ctx interface{}, email interface{}) *MockAuthServiceInterface_RequestPasswordReset_Call {
+func (_e *MockAuthServiceInterface_Expecter) RequestPasswordReset(ctx any, email any) *MockAuthServiceInterface_RequestPasswordReset_Call {
 	return &MockAuthServiceInterface_RequestPasswordReset_Call{Call: _e.mock.On("RequestPasswordReset", ctx, email)}
 }
 
@@ -394,7 +403,7 @@ type MockAuthServiceInterface_ResendConfirmation_Call struct {
 // ResendConfirmation is a helper method to define mock.On call
 //   - ctx context.Context
 //   - email string
-func (_e *MockAuthServiceInterface_Expecter) ResendConfirmation(ctx interface{}, email interface{}) *MockAuthServiceInterface_ResendConfirmation_Call {
+func (_e *MockAuthServiceInterface_Expecter) ResendConfirmation(ctx any, email any) *MockAuthServiceInterface_ResendConfirmation_Call {
 	return &MockAuthServiceInterface_ResendConfirmation_Call{Call: _e.mock.On("ResendConfirmation", ctx, email)}
 }
 
@@ -462,7 +471,7 @@ type MockAuthServiceInterface_ResetPassword_Call struct {
 //   - tokenID string
 //   - password string
 //   - confirmation string
-func (_e *MockAuthServiceInterface_Expecter) ResetPassword(ctx interface{}, tokenID interface{}, password interface{}, confirmation interface{}) *MockAuthServiceInterface_ResetPassword_Call {
+func (_e *MockAuthServiceInterface_Expecter) ResetPassword(ctx any, tokenID any, password any, confirmation any) *MockAuthServiceInterface_ResetPassword_Call {
 	return &MockAuthServiceInterface_ResetPassword_Call{Call: _e.mock.On("ResetPassword", ctx, tokenID, password, confirmation)}
 }
 
@@ -504,6 +513,50 @@ func (_c *MockAuthServiceInterface_ResetPassword_Call) RunAndReturn(run func(ctx
 	return _c
 }
 
+// SignupAllowed provides a mock function for the type MockAuthServiceInterface
+func (_mock *MockAuthServiceInterface) SignupAllowed() bool {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SignupAllowed")
+	}
+
+	var r0 bool
+	if returnFunc, ok := ret.Get(0).(func() bool); ok {
+		r0 = returnFunc()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+	return r0
+}
+
+// MockAuthServiceInterface_SignupAllowed_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SignupAllowed'
+type MockAuthServiceInterface_SignupAllowed_Call struct {
+	*mock.Call
+}
+
+// SignupAllowed is a helper method to define mock.On call
+func (_e *MockAuthServiceInterface_Expecter) SignupAllowed() *MockAuthServiceInterface_SignupAllowed_Call {
+	return &MockAuthServiceInterface_SignupAllowed_Call{Call: _e.mock.On("SignupAllowed")}
+}
+
+func (_c *MockAuthServiceInterface_SignupAllowed_Call) Run(run func()) *MockAuthServiceInterface_SignupAllowed_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAuthServiceInterface_SignupAllowed_Call) Return(b bool) *MockAuthServiceInterface_SignupAllowed_Call {
+	_c.Call.Return(b)
+	return _c
+}
+
+func (_c *MockAuthServiceInterface_SignupAllowed_Call) RunAndReturn(run func() bool) *MockAuthServiceInterface_SignupAllowed_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ValidateCredentials provides a mock function for the type MockAuthServiceInterface
 func (_mock *MockAuthServiceInterface) ValidateCredentials(ctx context.Context, email string, password string) (*user.User, error) {
 	ret := _mock.Called(ctx, email, password)
@@ -541,7 +594,7 @@ type MockAuthServiceInterface_ValidateCredentials_Call struct {
 //   - ctx context.Context
 //   - email string
 //   - password string
-func (_e *MockAuthServiceInterface_Expecter) ValidateCredentials(ctx interface{}, email interface{}, password interface{}) *MockAuthServiceInterface_ValidateCredentials_Call {
+func (_e *MockAuthServiceInterface_Expecter) ValidateCredentials(ctx any, email any, password any) *MockAuthServiceInterface_ValidateCredentials_Call {
 	return &MockAuthServiceInterface_ValidateCredentials_Call{Call: _e.mock.On("ValidateCredentials", ctx, email, password)}
 }
 

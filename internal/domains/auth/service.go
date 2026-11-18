@@ -19,12 +19,14 @@ import (
 var (
 	ErrEmailNotConfirmed  = apperr.New(apperr.KindForbidden, "please confirm your email address before logging in")
 	errInvalidCredentials = apperr.New(apperr.KindUnauthorized, "invalid credentials")
+	errSignupOff          = apperr.New(apperr.KindForbidden, "sign up is turned off")
 )
 
 type AuthServiceInterface interface {
 	ValidateCredentials(ctx context.Context, email, password string) (*user.User, error)
 	CreateUser(ctx context.Context, displayName, email, password string) (*user.User, error)
 	GetUserByID(ctx context.Context, userID int64) (*user.User, error)
+	SignupAllowed() bool
 	Register(ctx context.Context, displayName, email, password string) error
 	ConfirmEmail(ctx context.Context, tokenID string) error
 	ResendConfirmation(ctx context.Context, email string) error
@@ -133,7 +135,15 @@ func (s *AuthService) GetUserByID(ctx context.Context, userID int64) (*user.User
 	}, nil
 }
 
+func (s *AuthService) SignupAllowed() bool {
+	return s.cfg.App.AllowSignup
+}
+
 func (s *AuthService) Register(ctx context.Context, displayName, email, password string) error {
+	if !s.SignupAllowed() {
+		return errSignupOff
+	}
+
 	if err := validatePasswordStrength(password); err != nil {
 		return err
 	}
@@ -228,7 +238,7 @@ func (s *AuthService) issueConfirmation(ctx context.Context, userID int64, email
 		return err
 	}
 
-	link := utils.APIBaseURL(s.cfg) + "/api/auth/confirm-email?token=" + id
+	link := utils.WebClientBaseURL(s.cfg) + "/api/auth/confirm-email?token=" + id
 	return s.mailer.SendConfirmationEmail(email, displayName, link)
 }
 

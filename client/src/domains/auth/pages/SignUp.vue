@@ -130,16 +130,16 @@ async function signUp() {
                 <Button
                     :label="loading ? 'Creating account...' : 'Sign up'"
                     :icon="loading ? 'pi pi-spin pi-spinner mr-2' : ''"
-                    class="w-full auth-accent-button"
+                    class="w-full"
                     :disabled="loading"
                     @click="signUp"
                 />
             </div>
 
-            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Already have an account?</span>
+            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-edge">
+                <span class="text-sm text-fg-muted">Already have an account?</span>
                 <span
-                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                    class="text-sm font-medium text-accent hover:underline underline-offset-4 cursor-pointer"
                     @click="router.push({ name: 'login' })"
                 >
                     Log in

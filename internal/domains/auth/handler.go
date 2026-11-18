@@ -39,6 +39,7 @@ func (h *AuthHandler) Routes() chi.Router {
 
 	// Public routes
 	r.Post("/login", h.Login)
+	r.Get("/signup", h.Signup)
 	r.Post("/register", h.Register)
 	r.Get("/confirm-email", h.ConfirmEmail)
 	r.Post("/resend-confirmation", h.ResendConfirmation)
@@ -83,6 +84,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Email:       user.Email,
 		DisplayName: user.DisplayName,
 	})
+}
+
+func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
+	h.resp.JSON(w, http.StatusOK, SignupResponse{AllowSignup: h.service.SignupAllowed()})
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
