@@ -25,7 +25,8 @@ services:
       - app_network
 
   db:
-    image: postgres:latest
+    # Pinned: a new major version keeps its data in a new folder and starts empty
+    image: postgres:18
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
