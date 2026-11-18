@@ -54,7 +54,7 @@ services:
       - loki
     labels:
       - traefik.enable=true
-      - traefik.http.routers.grafana.rule=Host(`grafana.${HOST:-localhost}`)
+      - traefik.http.routers.grafana.rule=Host(`grafana.${WEB_CLIENT_DOMAIN:-localhost}`)
       - traefik.http.routers.grafana.entrypoints=websecure
       - traefik.http.routers.grafana.tls.certresolver=le
       - traefik.http.services.grafana.loadbalancer.server.port=3000

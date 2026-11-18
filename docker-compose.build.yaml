@@ -1,0 +1,16 @@
+# Build overlay. docker-compose.yaml only pulls the published images; add this file to build from source instead.
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+
+  api:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile
+
+  client:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile.client

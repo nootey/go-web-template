@@ -1,0 +1,10 @@
+# ARM overlay, for a Raspberry Pi or another ARM board. Layer it on top of docker-compose.yaml.
+# The published images are multi-arch, so the board pulls arm64 on its own.
+services:
+  # An overlay cannot delete a service, so a profile turns Traefik off.
+  traefik:
+    profiles: ["traefik"]
+
+  client:
+    ports:
+      - "${WEB_CLIENT_PORT:-5173}:80"

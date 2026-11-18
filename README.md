@@ -1,165 +1,61 @@
 # Go Web Template
 
 A Go web application template with clean architecture, testing, and CI/CD workflows.
+It comes with a Vue client, auth with sessions, PostgreSQL, Redis, an observability stack and Docker deploys.
 
 ## Quick Start
 
-### Clone the Template
-```bash
+### Requirements
+
+- Go >= 1.27
+- Node >= 22.12 and pnpm
+- PostgreSQL
+- Redis
+- Docker (`make run` starts the observability stack with Docker Compose)
+
+### Clone the template
+
+```sh
 git clone https://github.com/yourusername/go-web-template.git myapp
 cd myapp
 ```
 
-### Update Module Name
+### Rename the app
 
-Replace `go-web-template` with your app name:
-```bash
-# Update go.mod
+Replace `go-web-template` with your app name in the Go module, the imports and the config files:
 
-# Update all imports
+```sh
+grep -rlI 'go-web-template' --exclude-dir=.git --exclude-dir=node_modules . | xargs sed -i 's/go-web-template/myapp/g'
 ```
 
-### Install Dependencies
-```bash
-go mod download
-```
+This also renames the Docker images in `docker-compose.yaml` and `.github/workflows/build-image.yml`.
+Check that the image names point to your Docker Hub account.
+The client shows the name `MyApp` in `client/index.html`, `client/src/pkg/router/router.ts` and
+`client/src/pkg/components/AuthSkeleton.vue`.
 
-### Setup Environment
-```bash
-cp .env.example .env
-```
+### Configure
 
-### Run Migrations
-```bash
+Create the configuration files from their examples and edit them:
+
+- `./.env.example` -> `./.env`
+- `./client/.env.example` -> `./client/.env` (optional, defaults work for local dev)
+
+### Run
+
+Run the migrations and seeders, then start the server and the client:
+
+```sh
 make migrate-up
-```
-
-### Seed Database
-```bash
-# Core data only (roles, permissions, root user)
 make seed
-```
-
-### Run the Application
-```bash
 make run
+cd client && pnpm install && pnpm run dev
 ```
 
-Visit: `http://127.0.0.1:8080/health`
+By default, the app is available at http://localhost:3030, and the API health check at http://localhost:8080/health.
+Log in with the root user from `.env` (`SEED_ROOT_USER` and `SEED_ROOT_PASSWORD`).
+Sign up is off by default. Set `APP_ALLOW_SIGNUP=true` to turn it on.
 
----
+## Docs
 
-## Architecture
-
-### Adding a New Resource
-
-1. **Create migration:**
-```bash
-   make migrate-create NAME=create_posts_table
-```
-
-2. **Write SQL queries** in `queries/post.sql`:
-```sql
-   -- name: GetPost :one
-   SELECT * FROM posts WHERE id = $1;
-   
-   -- name: CreatePost :one
-   INSERT INTO posts (title, content, user_id)
-   VALUES ($1, $2, $3)
-   RETURNING *;
-```
-
-3. **Generate code:**
-```bash
-   make sqlc-generate
-```
-
-4. **Create service**:
-```go
-   type PostService struct {
-       queries *database.Queries
-       logger  *zap.Logger
-   }
-```
-
-5. **Create handler**:
-```go
-   func (h *PostHandler) Routes() chi.Router {
-       r := chi.NewRouter()
-       r.Get("/", h.ListPosts)
-       r.Post("/", h.CreatePost)
-       return r
-   }
-```
-
-6. **Wire it up** in `cmd/api/main.go`:
-```go
-   postService := services.NewPostService(queries, logger)
-   postHandler := handlers.NewPostHandler(postService, logger)
-   r.Mount("/posts", postHandler.Routes())
-```
-
----
-
-## Testing
-
-### Integration Tests (with real DB)
-```bash
-go test -v ./internal/services/
-```
-
-Uses Testcontainers to spin up PostgreSQL automatically.
-
-### Unit Tests (with mocks)
-```bash
-go test -v ./internal/handlers/
-```
-
-Uses generated mocks to test handlers in isolation.
-
----
-
-## CI/CD
-
-### GitHub Actions Workflows
-
-The template includes workflows:
-
-- **Lint**:
-    - Client and server
-
-- **Tests**:
-    - Runs all tests with coverage
-
-**Release**:
-    - Auto-creates Git tags and GitHub releases
-
-### Setup Release Automation
-
--  **Create labels** in GitHub (Settings → Labels):
-
-   | Name | Color | Description |
-      |------|-------|-------------|
-   | `release:major` | `#d73a4a` | Breaking changes (v1.0.0 → v2.0.0) |
-   | `release:minor` | `#fbca04` | New features (v1.0.0 → v1.1.0) |
-   | `release:patch` | `#0e8a16` | Bug fixes (v1.0.0 → v1.0.1) |
-
-- **Usage:**
-    - Create a PR to `main`
-    - Add one of the `release:*` labels
-    - Merge the PR
-    - Workflow automatically creates tag and release!
-
----
-
-## Configuration
-
-All configuration is managed through environment variables (`.env`).
-
-Access config anywhere:
-```go
-import "myapp/internal/config"
-
-cfg := config.Get()
-fmt.Println(cfg.Server.Port)
-```
+- [docs/development.md](./docs/development.md) - database, adding a resource, config, tests, linting and releases
+- [docs/docker.md](./docs/docker.md) - run the app with Docker on a server or an ARM board
