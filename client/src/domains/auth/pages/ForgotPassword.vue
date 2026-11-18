@@ -67,16 +67,16 @@ async function requestPasswordReset() {
                 <Button
                     :label="loading ? 'Sending...' : 'Request password reset'"
                     :icon="loading ? 'pi pi-spin pi-spinner mr-2' : ''"
-                    class="w-full auth-accent-button"
+                    class="w-full"
                     :disabled="loading"
                     @click="requestPasswordReset"
                 />
             </div>
 
-            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Remember your password?</span>
+            <div class="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-edge">
+                <span class="text-sm text-fg-muted">Remember your password?</span>
                 <span
-                    class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 cursor-pointer"
+                    class="text-sm font-medium text-accent hover:underline underline-offset-4 cursor-pointer"
                     @click="router.push({ name: 'login' })"
                 >
                     Log in

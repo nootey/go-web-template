@@ -9,8 +9,11 @@ import ConfirmEmail from "../../domains/auth/pages/ConfirmEmail.vue";
 
 declare module "vue-router" {
     interface RouteMeta {
+        title?: string;
+        hideNavigation?: boolean;
         requiresAuth?: boolean;
         guestOnly?: boolean;
+        requiresSignup?: boolean; // open only when the server allows sign up
         emailConfirmed?: boolean;
         permsAny?: string[]; // allow if the user has ANY of these
         permsAll?: string[]; // allow only if the user has ALL of these
@@ -21,7 +24,7 @@ const routes: RouteRecordRaw[] = [
     {
         path: "/",
         name: "dashboard",
-        meta: { title: "Dash", requiresAuth: true },
+        meta: { title: "Dashboard", requiresAuth: true },
         component: Dashboard,
     },
     {
@@ -33,7 +36,7 @@ const routes: RouteRecordRaw[] = [
     {
         path: "/signup",
         name: "sign.up",
-        meta: { title: "Sign up", guestOnly: true, hideNavigation: true },
+        meta: { title: "Sign up", guestOnly: true, requiresSignup: true, hideNavigation: true },
         component: SignUp,
     },
     {
@@ -58,7 +61,7 @@ const routes: RouteRecordRaw[] = [
         path: "/:pathMatch(.*)*",
         name: "NotFound",
         component: NotFound,
-        meta: { title: "404" },
+        meta: { title: "Not found" },
     },
 ];
 

@@ -5,3 +5,7 @@ export interface AuthForm {
     password_confirmation?: string;
     remember_me?: boolean;
 }
+
+export interface SignupStatus {
+    allow_signup: boolean;
+}

@@ -38,6 +38,10 @@ router.beforeEach(async (to) => {
         return { name: "dashboard" };
     }
 
+    if (to.meta.requiresSignup && !(await auth.signupAllowed().catch(() => false))) {
+        return { name: "login" };
+    }
+
     // Permission gates (only when authenticated)
     if (auth.isAuthenticated) {
         const has = (p: string | string[]) => (hasPermission ? hasPermission(p) : false);
@@ -49,6 +53,10 @@ router.beforeEach(async (to) => {
             return { name: "dashboard" };
         }
     }
+});
+
+router.afterEach((to) => {
+    document.title = to.meta.title ? `${to.meta.title} · MyApp` : "MyApp";
 });
 
 export default router;

@@ -1,42 +1,38 @@
 import { defineStore } from "pinia";
 
+type ThemeMode = "light" | "dark";
+
+// index.html reads the same key to set the theme before the app loads.
+const STORAGE_KEY = "app_theme";
+
+function readStoredTheme(): ThemeMode {
+    const value = localStorage.getItem(STORAGE_KEY);
+    if (value === "light" || value === "dark") return value;
+    return "dark";
+}
+
 export const useThemeStore = defineStore("theme", {
     state: () => ({
-        theme: "system" as "system" | "dark" | "light",
+        theme: readStoredTheme(),
     }),
     getters: {
         isDark(): boolean {
-            if (this.theme === "system") {
-                return true;
-            }
             return this.theme === "dark";
         },
     },
     actions: {
-        initializeTheme() {
-            // Set initial theme (system default)
+        initializeTheme(): void {
             this.applyTheme();
-
-            // Listen for system theme changes
-            window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-                if (this.theme === "system") {
-                    this.applyTheme();
-                }
-            });
         },
 
-        setTheme(theme: "system" | "dark" | "light") {
+        setTheme(theme: ThemeMode): void {
             this.theme = theme;
+            localStorage.setItem(STORAGE_KEY, theme);
             this.applyTheme();
         },
 
-        applyTheme() {
-            const rootEl = document.documentElement;
-            if (this.isDark) {
-                rootEl.classList.add("my-app-dark");
-            } else {
-                rootEl.classList.remove("my-app-dark");
-            }
+        applyTheme(): void {
+            document.documentElement.classList.toggle("app-dark", this.isDark);
         },
     },
 });
