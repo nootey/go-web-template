@@ -26,7 +26,7 @@ services:
 
   db:
     # Pinned: a new major version keeps its data in a new folder and starts empty
-    image: postgres:18
+    image: postgres:19
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
